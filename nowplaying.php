@@ -58,13 +58,55 @@ function now_playing_add_settings_fields() {
     add_settings_field('cache_duration', 'Dauer des Transient-Cache', 'now_playing_cache_duration_callback', 'now_playing', 'now_playing_section');
 }
 
-// Callback functions for settings fields
-function now_playing_top_tracks_count_callback() {
-    $setting = esc_attr(get_option('top_tracks_count', 5));
-    echo "<input type='number' name='top_tracks_count' value='$setting' min='1' />";
-}
+    // Callback functions for settings fields
+    function now_playing_top_tracks_count_callback() {
+        $setting = esc_attr(get_option('top_tracks_count', 5));
+        echo "<input type='number' name='top_tracks_count' value='$setting' min='1' />";
+    }
 
-// Repeat similar callback functions for other settings fields
+    // Callback-Funktion für 'top_artists_count'
+    function now_playing_top_artists_count_callback() {
+        $setting = esc_attr(get_option('top_artists_count', 5));
+        echo "<input type='number' name='top_artists_count' value='$setting' min='1' />";
+    }
+
+    // Callback-Funktion für 'top_albums_count'
+    function now_playing_top_albums_count_callback() {
+        $setting = esc_attr(get_option('top_albums_count', 5));
+        echo "<input type='number' name='top_albums_count' value='$setting' min='1' />";
+    }
+
+    // Callback-Funktion für 'toptags_count'
+    function now_playing_toptags_count_callback() {
+        $setting = esc_attr(get_option('toptags_count', 5));
+        echo "<input type='number' name='toptags_count' value='$setting' min='1' />";
+    }
+
+
+    // Callback-Funktion für 'lovedtracks_count'
+    function now_playing_lovedtracks_count_callback() {
+        $setting = esc_attr(get_option('lovedtracks_count', 5));
+        echo "<input type='number' name='lovedtracks_count' value='$setting' min='1' />";
+    }
+
+    // Callback-Funktion für 'time_period'
+    function now_playing_time_period_callback() {
+        $setting = esc_attr(get_option('time_period', '7day'));
+        echo "<select name='time_period'>
+            <option value='7day' " . selected($setting, '7day', false) . ">Letzte 7 Tage</option>
+            <option value='1month' " . selected($setting, '1month', false) . ">Letzte 30 Tage</option>
+            <option value='3month' " . selected($setting, '3month', false) . ">Letzte 90 Tage</option>
+            <option value='6month' " . selected($setting, '6month', false) . ">Letzte 180 Tage</option>
+            <option value='12month' " . selected($setting, '12month', false) . ">Letzte 365 Tage</option>
+            <option value='overall' " . selected($setting, 'overall', false) . ">Insgesamt</option>
+        </select>";
+    }
+
+    // Callback-Funktion für 'cache_duration'
+    function now_playing_cache_duration_callback() {
+        $setting = esc_attr(get_option('cache_duration', 15));
+        echo "<input type='number' name='cache_duration' value='$setting' min='1' />";
+    }
 
 // The settings page content
 function now_playing_settings_page() {
@@ -176,7 +218,34 @@ function now_playing_settings_page() {
         <li><code>[lastfm_top_tags]</code> - Zeigt die Top-Tags von Last.fm an.</li>
     </ul>
 </div>
-<?php
+    <!-- Beginn der Vorschau-Bereich -->
+    <div class="wrap">
+        <h2>Vorschau der Daten</h2>
+        <div id="now-playing-preview">
+            <h3>Letzte Scrobbles von Last.fm</h3>
+            <?php echo now_playing_lastfm_shortcode(); // Vorschau der letzten Scrobbles ?>
+
+            <h3>Letzte Aktivitäten von Trakt.tv</h3>
+            <?php echo now_playing_trakt_shortcode(); // Vorschau der letzten Trakt.tv Aktivitäten ?>
+
+            <h3>Top Titel</h3>
+            <?php echo shortcode_top_tracks(); // Vorschau der Top Titel ?>
+
+            <h3>Top Künstler</h3>
+            <?php echo shortcode_top_artists(); // Vorschau der Top Künstler ?>
+
+            <h3>Top Alben</h3>
+            <?php echo shortcode_top_albums(); // Vorschau der Top Alben ?>
+
+            <h3>Lieblingslieder</h3>
+            <?php echo shortcode_lovedtracks(); // Vorschau der Lieblingslieder ?>
+
+            <h3>Top Tags</h3>
+            <?php echo shortcode_lastfm_top_tags(); // Vorschau der Top Tags ?>
+        </div>
+    </div>
+    <!-- Ende des Vorschau-Bereichs -->
+    <?php
 }
 
 // Add styles for the plugin
@@ -215,8 +284,6 @@ function now_playing_styles() {
         ol, ul, li {
             margin: 0 !important; /* Entfernt den linken Außenabstand */
         }
-
-        /* Weitere individuelle Stile hier hinzufügen */
     </style>
     <?php
 }
