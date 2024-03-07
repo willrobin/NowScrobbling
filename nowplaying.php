@@ -15,6 +15,7 @@ add_action('admin_menu', 'now_playing_create_menu');
 function now_playing_create_menu() {
     add_options_page('Now Playing Einstellungen', 'Now Playing', 'manage_options', 'now-playing-settings', 'now_playing_settings_page');
     add_action('admin_init', 'register_now_playing_settings');
+    add_action('admin_init', 'now_playing_add_settings_fields');
 }
 
 // Register settings for the plugin
@@ -28,8 +29,8 @@ function register_now_playing_settings() {
     register_setting('now-playing-settings-group', 'top_tracks_count');
     register_setting('now-playing-settings-group', 'top_artists_count');
     register_setting('now-playing-settings-group', 'top_albums_count');
-    register_setting('now-playing-settings-group', 'obsessions_count');
-    register_setting('now-playing-settings-group', 'scrobbles_count');
+    register_setting('now-playing-settings-group', 'lovedtracks_count');
+    register_setting('now-playing-settings-group', 'toptags_count');
     register_setting('now-playing-settings-group', 'time_period');
     register_setting('now-playing-settings-group', 'cache_duration');
 
@@ -43,12 +44,12 @@ function register_now_playing_settings() {
 }
 
 function now_playing_add_settings_fields() {
-    // Add settings fields for top tracks, artists, albums, obsessions, and scrobbles
+    // Add settings fields for top tracks, artists, albums, lovedtracks
     add_settings_field('top_tracks_count', 'Anzahl der Top-Titel', 'now_playing_top_tracks_count_callback', 'now_playing', 'now_playing_section');
     add_settings_field('top_artists_count', 'Anzahl der Top-Künstler', 'now_playing_top_artists_count_callback', 'now_playing', 'now_playing_section');
     add_settings_field('top_albums_count', 'Anzahl der Top-Alben', 'now_playing_top_albums_count_callback', 'now_playing', 'now_playing_section');
-    add_settings_field('obsessions_count', 'Anzahl der Obsessionen', 'now_playing_obsessions_count_callback', 'now_playing', 'now_playing_section');
-    add_settings_field('scrobbles_count', 'Anzahl der Scrobbles', 'now_playing_scrobbles_count_callback', 'now_playing', 'now_playing_section');
+    add_settings_field('lovedtracks_count', 'Anzahl der Lieblingslieder', 'now_playing_lovedtracks_count_callback', 'now_playing', 'now_playing_section');
+    add_settings_field('toptags_count', 'Anzahl der Top-Tags', 'now_playing_toptags_count_callback', 'now_playing', 'now_playing_section');
 
     // Add settings field for time period
     add_settings_field('time_period', 'Zeitraum', 'now_playing_time_period_callback', 'now_playing', 'now_playing_section');
@@ -128,12 +129,12 @@ function now_playing_settings_page() {
                 <td><input type="number" name="top_albums_count" value="<?php echo esc_attr(get_option('top_albums_count', 5)); ?>" /></td>
             </tr>
             <tr valign="top">
-                <th scope="row">Anzahl der Obsessionen</th>
-                <td><input type="number" name="obsessions_count" value="<?php echo esc_attr(get_option('obsessions_count', 5)); ?>" /></td>
+                <th scope="row">Anzahl der Lieblingslieder</th>
+                <td><input type="number" name="lovedtracks_count" value="<?php echo esc_attr(get_option('lovedtracks_count', 5)); ?>" /></td>
             </tr>
             <tr valign="top">
-                <th scope="row">Anzahl der Scrobbles</th>
-                <td><input type="number" name="scrobbles_count" value="<?php echo esc_attr(get_option('scrobbles_count', 5)); ?>" /></td>
+                <th scope="row">Anzahl der Top-Tags</th>
+                <td><input type="number" name="toptags_count" value="<?php echo esc_attr(get_option('toptags_count', 5)); ?>" /></td>
             </tr>
             <tr valign="top">
                 <th scope="row">Zeitraum</th>
@@ -171,8 +172,8 @@ function now_playing_settings_page() {
         <li><code>[top_tracks]</code> - Zeigt die Top-Titel von Last.fm an.</li>
         <li><code>[top_artists]</code> - Zeigt die Top-Künstler von Last.fm an.</li>
         <li><code>[top_albums]</code> - Zeigt die Top-Alben von Last.fm an.</li>
-        <li><code>[obsessions]</code> - Zeigt die Obsessionen von Last.fm an.</li>
-        <li><code>[scrobbles]</code> - Zeigt die Scrobbles von Last.fm an.</li>
+        <li><code>[lovedtracks]</code> - Zeigt die Lieblingslieder von Last.fm an.</li>
+        <li><code>[lastfm_top_tags]</code> - Zeigt die Top-Tags von Last.fm an.</li>
     </ul>
 </div>
 <?php
@@ -187,8 +188,7 @@ function now_playing_styles() {
         .top-tracks ol, .top-tracks ul, .top-tracks li,
         .top-artists ol, .top-artists ul, .top-artists li,
         .top-albums ol, .top-albums ul, .top-albums li,
-        .obsessions ol, .obsessions ul, .obsessions li,
-        .scrobbles-count ol, .scrobbles-count ul, .scrobbles-count li {
+        .lovedtracks ol, .lovedtracks ul, .lovedtracks li, .top-tags ol, .top-tags ul, .top-tags li {
             list-style-type: none !important;
             padding-left: 0 !important;
             margin: 0 !important;
@@ -196,7 +196,7 @@ function now_playing_styles() {
         }
         .lastfm-scrobbles li a, .trakt-tv-activities li a,
         .top-tracks li a, .top-artists li a, .top-albums li a,
-        .obsessions li a, .scrobbles-count li a {
+        .lovedtracks li a, .top-tags li a{
             text-decoration: none;
         }
         .now-playing {
@@ -340,16 +340,16 @@ function shortcode_top_albums() {
 }
 add_shortcode('top_albums', 'shortcode_top_albums');
 
-function shortcode_obsessions() {
-    $count = get_option('obsessions_count', 5); // Default 5 obsessions
+function shortcode_lovedtracks() {
+    $count = get_option('lovedtracks_count', 5); // Default 5 lovedtracks
     $period = get_option('time_period', '7day'); // Default last 7 days
 
     $data = fetch_lastfm_data('lovedtracks', $count, $period);
     if ($data === null) {
-        return 'Fehler beim Abrufen der Obsessions.';
+        return 'Fehler beim Abrufen der lovedtracks.';
     }
 
-    $output = '<ul class="obsessions">'; // Add the CSS class here
+    $output = '<ul class="lovedtracks">'; // Add the CSS class here
     foreach ($data['lovedtracks']['track'] as $track) {
         $artist = esc_html($track['artist']['name']);
         $title = esc_html($track['name']);
@@ -361,20 +361,7 @@ function shortcode_obsessions() {
 
     return $output;
 }
-add_shortcode('obsessions', 'shortcode_obsessions');
-
-function shortcode_scrobbles() {
-    $period = get_option('time_period', '7day'); // Default last 7 days
-
-    $data = fetch_lastfm_data('recenttracks', null, $period);
-    if ($data === null) {
-        return 'Fehler beim Abrufen der Scrobbles.';
-    }
-
-    // Return the count of scrobbles
-    return count($data['recenttracks']['track']);
-}
-add_shortcode('scrobbles', 'shortcode_scrobbles');
+add_shortcode('lovedtracks', 'shortcode_lovedtracks');
 
 // Fetch and display Trakt.tv activities
 function now_playing_fetch_trakt_activities() {
@@ -427,6 +414,35 @@ function now_playing_lastfm_shortcode() {
     return $output;
 }
 add_shortcode('lastfm_scrobbles', 'now_playing_lastfm_shortcode');
+
+function fetch_lastfm_top_tags() {
+    $data = fetch_lastfm_data('TopTags');
+    if ($data === null) {
+        return 'Fehler beim Abrufen der Top Tags.';
+    }
+
+    $tags = isset($data['toptags']['tag']) ? $data['toptags']['tag'] : [];
+    return $tags;
+}
+
+function shortcode_lastfm_top_tags() {
+    $tags = fetch_lastfm_top_tags();
+    if (is_string($tags)) {
+        return $tags; // Fehlermeldung zurückgeben
+    }
+
+    $output = '<ul class="lastfm-top-tags">';
+    foreach ($tags as $tag) {
+        $name = esc_html($tag['name']);
+        $url = esc_url($tag['url']);
+
+        $output .= "<li><a href='{$url}' target='_blank'>{$name}</a></li>";
+    }
+    $output .= '</ul>';
+
+    return $output;
+}
+add_shortcode('lastfm_top_tags', 'shortcode_lastfm_top_tags');
 
 function now_playing_trakt_shortcode() {
     $activities = now_playing_fetch_trakt_activities();
