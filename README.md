@@ -1,46 +1,36 @@
-# Now Playing WordPress Plugin
+# NowScrobbling (WordPress Plugin)
 
-Das "Now Playing" Plugin ermöglicht die Verwaltung von API-Einstellungen für last.fm und trakt.tv und zeigt deren letzte Aktivitäten an. Es ist eine einfache Lösung, um Musik- und TV-Aktivitäten auf Ihrer WordPress-Seite zu integrieren.
+NowScrobbling is a straightforward WordPress plugin that manages API settings for last.fm and trakt.tv and displays their latest activities. It offers an easy solution to integrate activities on your WordPress site.
 
-## Funktionen
+## Features
 
-- Integration mit Last.fm und Trakt.tv, um die letzten Scrobbles bzw. Aktivitäten zu zeigen.
-- Einfache Verwaltung von API-Schlüsseln und Benutzernamen direkt im WordPress-Admin-Bereich.
-- Anpassbare Einstellungen für die Anzahl der anzuzeigenden Top-Titel, Künstler, Alben, Obsessionen und Scrobbles.
-- Steuerung der Cache-Dauer, um die Belastung der APIs zu verringern.
-- Verfügbarkeit von Shortcodes, um die Daten flexibel auf Beiträgen, Seiten oder Widgets einzubinden.
+- **Integration with Last.fm and Trakt.tv**: Displays the most recent scrobbles and activities from Last.fm and Trakt.tv.
+- **Easy Management of API Keys and Usernames**: Configure your API keys and usernames directly in the WordPress admin area.
+- **Customizable Settings**: Adjust the number of top tracks, artists, albums, obsessions, and scrobbles to display.
+- **Cache Duration Control**: Reduce API load by controlling the cache duration of fetched data.
+- **Shortcodes Availability**: Incorporate data flexibly into posts, pages, or widgets using shortcodes.
 
 ## Installation
 
-1. Laden Sie den Plugin-Ordner in das Verzeichnis `/wp-content/plugins/` Ihrer WordPress-Installation hoch.
-2. Aktivieren Sie das Plugin über das 'Plugins' Menü in WordPress.
+1. Upload the plugin folder to the `/wp-content/plugins/` directory of your WordPress installation.
+2. Activate the plugin through the 'Plugins' menu in WordPress.
 
-## Konfiguration
+## Configuration
 
-Nach der Aktivierung finden Sie die Einstellungsseite unter `Einstellungen > Now Playing`. Dort können Sie Ihre Last.fm und Trakt.tv API-Schlüssel sowie Benutzernamen eingeben und weitere Einstellungen vornehmen.
+After activation, you'll find the settings page under `Settings > NowScrobbling`. Here, you can enter your Last.fm and Trakt.tv API keys and usernames, among other settings.
 
-## Verwendung
+## Usage
 
-Das Plugin stellt mehrere Shortcodes zur Verfügung, die Sie in Ihren Beiträgen, Seiten oder Widgets verwenden können:
+The plugin provides several shortcodes for use in your posts, pages, or widgets.
 
-- `[lastfm_scrobbles]`: Zeigt die letzten Scrobbles von Last.fm an.
-- `[trakt_activities]`: Zeigt die letzten Aktivitäten von Trakt.tv an.
-- `[lastfm_last_activity]`: Zeigt die Zeit der letzten Last.fm Aktivität an oder "NOW PLAYING".
-- `[trakt_last_activity]`: Zeigt die Zeit der letzten Trakt.tv Aktivität an.
-- `[top_tracks]`: Zeigt die Top-Titel von Last.fm an.
-- `[top_artists]`: Zeigt die Top-Künstler von Last.fm an.
-- `[top_albums]`: Zeigt die Top-Alben von Last.fm an.
-- `[obsessions]`: Zeigt die Obsessionen von Last.fm an.
-- `[scrobbles]`: Zeigt die Scrobbles von Last.fm an.
+## Customization
 
-## Anpassung
-
-Das Aussehen der angezeigten Daten kann über CSS angepasst werden. Die entsprechenden Klassen sind im Quellcode dokumentiert.
+The appearance of the displayed data can be customized with CSS. Relevant classes are documented in the source code.
 
 ## Support
 
-Für Support-Anfragen besuchen Sie bitte [https://robinwill.de](https://robinwill.de).
+For support requests, please visit [https://robinwill.de](https://robinwill.de).
 
-## Lizenz
+## License
 
-Das Plugin ist lizenziert unter der GPL v2 oder später.
+The plugin is licensed under the GPL v2 or later.
