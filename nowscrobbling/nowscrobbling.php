@@ -1,12 +1,23 @@
 <?php
-/*
-Plugin Name: NowScrobbling
-Plugin URI: https://github.com/willrobin/NowScrobbling
-Description: NowScrobbling ist ein einfaches WordPress-Plugin, um API-Einstellungen für last.fm und trakt.tv zu verwalten und deren letzte Aktivitäten anzuzeigen.
-Version: 1.0.4
-Author: Robin Will
-Author URI: https://robinwill.de
-*/
+/**
+ * Plugin Name:         NowScrobbling
+ * Plugin URI:          https://github.com/willrobin/NowScrobbling
+ * Description:         NowScrobbling ist ein einfaches WordPress-Plugin, um API-Einstellungen für last.fm und trakt.tv zu verwalten und deren letzte Aktivitäten anzuzeigen.
+ * Version:             1.0.5
+ * Requires at least:   
+ * Requires PHP:        
+ * Author:              Robin Will
+ * Author URI:          https://robinwill.de/
+ * License:             GPLv2 or later
+ * Text Domain:         nowscrobbling
+ * Domain Path:         /languages
+ * GitHub Plugin URI:   https://github.com/willrobin/NowScrobbling
+ * GitHub Branch:       master
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly
+}
 
 add_action('admin_menu', 'nowscrobbling_admin_menu');
 add_action('admin_init', 'nowscrobbling_register_settings');
@@ -96,10 +107,10 @@ function nowscrobbling_settings_page() {
 ?>
 <div class="wrap">
     <h1>NowScrobbling Settings</h1>
-
     <form method="post" action="options.php">
         <?php settings_fields('nowscrobbling-settings-group'); ?>
         <?php do_settings_sections('nowscrobbling-settings-group'); ?>
+        <h2>Last.fm</h2>
         <table class="form-table">
             <!-- Input fields for API keys and user names -->
             <tr valign="top">
@@ -110,34 +121,10 @@ function nowscrobbling_settings_page() {
                 <th scope="row">Last.fm Benutzername</th>
                 <td><input type="text" name="lastfm_user" value="<?php echo esc_attr(get_option('lastfm_user')); ?>" /></td>
             </tr>
-            <tr valign="top">
-                <th scope="row">Trakt.tv Client ID</th>
-                <td><input type="text" name="trakt_client_id" value="<?php echo esc_attr(get_option('trakt_client_id')); ?>" /></td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Trakt.tv Benutzername</th>
-                <td><input type="text" name="trakt_user" value="<?php echo esc_attr(get_option('trakt_user')); ?>" /></td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Last.fm Cache-Dauer (Minuten)</th>
-                <td><input type="number" name="lastfm_cache_duration" value="<?php echo esc_attr(get_option('lastfm_cache_duration', 1)); ?>" /></td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Trakt.tv Cache-Dauer (Minuten)</th>
-                <td><input type="number" name="trakt_cache_duration" value="<?php echo esc_attr(get_option('trakt_cache_duration', 5)); ?>" /></td>
-            </tr>
+
             <tr valign="top">
                 <th scope="row">Anzahl der last.fm Aktivitäten</th>
-                <td><input type="number" name="lastfm_activity_limit" value="<?php echo esc_attr(get_option('lastfm_activity_limit', 3)); ?>" /></td>
-            </tr>
-            <tr valign="top">
-                <th scope="row">Anzahl der trakt.tv Aktivitäten</th>
-                <td><input type="number" name="trakt_activity_limit" value="<?php echo esc_attr(get_option('trakt_activity_limit', 3)); ?>" /></td>
-            </tr>
-            
-            <tr valign="top">
-                <th scope="row">Anzahl der Top-Titel</th>
-                <td><input type="number" name="top_tracks_count" value="<?php echo esc_attr(get_option('top_tracks_count', 5)); ?>" /></td>
+                <td><input type="number" name="lastfm_activity_limit" value="<?php echo esc_attr(get_option('lastfm_activity_limit', 1)); ?>" /></td>
             </tr>
             <tr valign="top">
                 <th scope="row">Anzahl der Top-Künstler</th>
@@ -146,6 +133,10 @@ function nowscrobbling_settings_page() {
             <tr valign="top">
                 <th scope="row">Anzahl der Top-Alben</th>
                 <td><input type="number" name="top_albums_count" value="<?php echo esc_attr(get_option('top_albums_count', 5)); ?>" /></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Anzahl der Top-Titel</th>
+                <td><input type="number" name="top_tracks_count" value="<?php echo esc_attr(get_option('top_tracks_count', 5)); ?>" /></td>
             </tr>
             <tr valign="top">
                 <th scope="row">Anzahl der Lieblingslieder</th>
@@ -164,53 +155,97 @@ function nowscrobbling_settings_page() {
                     </select>
                 </td>
             </tr>
+        </table>
+
+        <h2>Trakt</h2>
+        <table class="form-table">
+            <!-- Input fields for API keys and user names -->
+            <tr valign="top">
+                <th scope="row">Trakt Client ID</th>
+                <td><input type="text" name="trakt_client_id" value="<?php echo esc_attr(get_option('trakt_client_id')); ?>" /></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Trakt Benutzername</th>
+                <td><input type="text" name="trakt_user" value="<?php echo esc_attr(get_option('trakt_user')); ?>" /></td>
+            </tr>
+
+            <tr valign="top">
+                <th scope="row">Anzahl der trakt.tv Aktivitäten</th>
+                <td><input type="number" name="trakt_activity_limit" value="<?php echo esc_attr(get_option('trakt_activity_limit', 3)); ?>" /></td>
+            </tr>
+        </table>
+        <h2>Cache</h2>
+        <table class="form-table">
+            <tr valign="top">
+                <th scope="row">Last.fm Cache-Dauer (Minuten)</th>
+                <td><input type="number" name="lastfm_cache_duration" value="<?php echo esc_attr(get_option('lastfm_cache_duration', 1)); ?>" /></td>
+            </tr>
+            <tr valign="top">
+                <th scope="row">Trakt Cache-Dauer (Minuten)</th>
+                <td><input type="number" name="trakt_cache_duration" value="<?php echo esc_attr(get_option('trakt_cache_duration', 5)); ?>" /></td>
+            </tr>
             <tr valign="top">
                 <th scope="row">Dauer des Transient-Cache</th>
                 <td><input type="number" name="cache_duration" value="<?php echo esc_attr(get_option('cache_duration', 15)); ?>" /></td>
             </tr>
         </table>
-        
         <?php submit_button('Speichern'); ?>
     </form>
     <form method="post">
+        <?php wp_nonce_field('nowscrobbling_clear_cache', 'nowscrobbling_nonce'); ?>
         <input type="submit" name="clear_cache" value="Cache leeren" class="button">
     </form>
     
     <!-- Display available shortcodes -->
     <h2>Verfügbare Shortcodes</h2>
     <p>Du kannst diese Shortcodes verwenden, um Inhalte in Beiträgen, Seiten oder Widgets anzuzeigen:</p>
+    <h3>Last.fm</h2>
     <ul>
-        <li><code>[lastfm_scrobbles]</code> - Zeigt die letzten Scrobbles von Last.fm an.</li>
-        <li><code>[trakt_activities]</code> - Zeigt die letzten Aktivitäten von Trakt.tv an.</li>
-        <li><code>[lastfm_last_activity]</code> - Zeigt die Zeit der letzten Last.fm Aktivität an oder "NOW PLAYING".</li>
-        <li><code>[trakt_last_activity]</code> - Zeigt die Zeit der letzten Trakt.tv Aktivität an.</li>
-        <li><code>[top_tracks]</code> - Zeigt die Top-Titel von Last.fm an.</li>
-        <li><code>[top_artists]</code> - Zeigt die Top-Künstler von Last.fm an.</li>
-        <li><code>[top_albums]</code> - Zeigt die Top-Alben von Last.fm an.</li>
-        <li><code>[lovedtracks]</code> - Zeigt die Lieblingslieder von Last.fm an.</li>
+        <li><code>[nowscr_lastfm_indicator]</code>          - Zeigt den Status der Last.fm Aktivität an.</li>
+        <li><code>[nowscr_lastfm_history]</code>            - Zeigt die letzten Scrobbles von Last.fm an.</li>
+        <li><code>[nowscr_lastfm_top_artists]</code>        - Zeigt die Top-Künstler von Last.fm im gewählten Zeitraum an.</li>
+        <li><code>[nowscr_lastfm_top_albums]</code>         - Zeigt die Top-Alben von Last.fm im gewählten Zeitraum an.</li>
+        <li><code>[nowscr_lastfm_top_tracks]</code>         - Zeigt die Top-Titel von Last.fm im gewählten Zeitraum an.</li>
+        <li><code>[nowscr_lastfm_lovedtracks]</code>        - Zeigt die Lieblingslieder von Last.fm an.</li>
     </ul>
+    <h3>Trakt</h2>
+    <ul>
+        <li><code>[nowscr_trakt_indicator]</code>           - Zeigt den Status der Trakt Aktivität an.</li>
+        <li><code>[nowscr_trakt_history]</code>             - Zeigt die letzten Scrobbles von Trakt an.</li>
+        <li><code>[nowscr_trakt_last_movie]</code>          - Zeigt den letzten Film von Trakt an.</li>
+        <li><code>[nowscr_trakt_last_show]</code>           - Zeigt die letzte Serie von Trakt an.</li>
+        <li><code>[nowscr_trakt_last_episode]</code>        - Zeigt die letzte Episode von Trakt an.</li>
+        
 </div>
     <!-- Beginn der Vorschau-Bereich -->
     <div class="wrap">
-        <h2>Vorschau der Daten</h2>
+        <h1>Vorschau der Daten</h1>
         <div id="nowscrobbling-preview">
-            <h3>Letzte Scrobbles von Last.fm</h3>
-            <?php echo nowscrobbling_lastfm_shortcode(); // Vorschau der letzten Scrobbles ?>
-
-            <h3>Letzte Aktivitäten von Trakt.tv</h3>
-            <?php echo nowscrobbling_trakt_shortcode(); // Vorschau der letzten Trakt.tv Aktivitäten ?>
-
-            <h3>Top Titel</h3>
-            <?php echo shortcode_top_tracks(); // Vorschau der Top Titel ?>
-
-            <h3>Top Künstler</h3>
-            <?php echo shortcode_top_artists(); // Vorschau der Top Künstler ?>
-
-            <h3>Top Alben</h3>
-            <?php echo shortcode_top_albums(); // Vorschau der Top Alben ?>
-
+            <h2>Last.fm</h2>
+            <h3>Status (Indicator)</h3>
+            <?php echo nowscr_lastfm_indicator_shortcode(); // Zeigt den Status der Last.fm Aktivität an. ?>
+            <h3>Letzte Scrobbles (History)</h3>
+            <?php echo nowscr_lastfm_history_shortcode(); // Zeigt die letzten Scrobbles von Last.fm an. ?>
+            <h3>Top-Künstler</h3>
+            <?php echo nowscr_lastfm_top_artists_shortcode(); // Zeigt die Top-Künstler von Last.fm im gewählten Zeitraum an. ?>
+            <h3>Top-Alben</h3>
+            <?php echo nowscr_lastfm_top_albums_shortcode(); // Zeigt die Top-Alben von Last.fm im gewählten Zeitraum an. ?>
+            <h3>Top-Titel</h3>
+            <?php echo nowscr_lastfm_top_tracks_shortcode(); // Zeigt die Top-Titel von Last.fm im gewählten Zeitraum an. ?>
             <h3>Lieblingslieder</h3>
-            <?php echo shortcode_lovedtracks(); // Vorschau der Lieblingslieder ?>
+            <?php echo nowscr_lastfm_lovedtracks_shortcode(); // Zeigt die Lieblingslieder von Last.fm an. ?>
+
+            <h2>Trakt</h2>
+            <h3>Status (Indicator)</h3>
+            <?php echo nowscr_trakt_indicator_shortcode(); // Zeigt den Status der Trakt Aktivität an. ?>
+            <h3>Letzte Scrobbles (History)</h3>
+            <?php echo nowscr_trakt_history_shortcode(); // Zeigt die letzten Scrobbles von Trakt an. ?>
+            <h3>Letzter Film</h3>
+            <?php echo nowscr_trakt_last_movie_shortcode(); // Zeigt den letzten Film von Trakt an. ?>
+            <h3>Letzter Serie</h3>
+            <?php echo nowscr_trakt_last_show_shortcode(); // Zeigt die letzte Serie von Trakt an. ?>
+            <h3>Letzte Episode</h3>
+            <?php echo nowscr_trakt_last_episode_shortcode(); // Zeigt die letzte Episode von Trakt an. ?>
         </div>
     </div>
     <!-- Ende des Vorschau-Bereichs -->
@@ -265,7 +300,7 @@ function nowscrobbling_styles() {
             font-size: 0.7rem;
             white-space: nowrap;
         }
-        .bubble img[src*="nowplaying.gif"] {
+        .bubble img[src*="public/images/nowplaying.gif"] {
             transform: scale(0.8);
             vertical-align: middle;
             margin-left: 0px;
@@ -334,10 +369,235 @@ function fetch_lastfm_data($type, $count = null, $period = null) {
     return $data;
 }
 
-function shortcode_top_tracks() {
+// SHORTCODES
+
+// last.fm
+
+function nowscr_lastfm_indicator_shortcode() {
+    // Abrufen der Cache-Dauer aus den WordPress-Optionen
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
+    $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
+
+    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($scrobbles === false) {
+        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
+        // Speichern Sie die Scrobbles für die festgelegte Cache-Dauer
+        set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
+    }
+
+    // Überprüfen Sie, ob $scrobbles ein Array ist
+    if (!is_array($scrobbles) || empty($scrobbles)) {
+        return "<em>Komisch, es wurden keine kürzlichen Scrobbles gefunden</em>"; // oder eine andere Fehlermeldung
+    }
+
+    foreach ($scrobbles as $track) {
+        if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
+            return "<strong>Scrobbelt gerade</strong>";
+        }
+    }
+
+    $lastScrobble = reset($scrobbles); // Nimmt den ersten Scrobble aus der Liste
+    if (isset($lastScrobble->date)) {
+        $lastScrobbleTimestamp = $lastScrobble->date->uts;
+        $dateTime = new DateTime("@$lastScrobbleTimestamp");
+        $dateTime->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
+        return 'Zuletzt gehört: ' . $dateTime->format(get_option('date_format') . ' ' . get_option('time_format'));
+    } else {
+        return "<em>Komisch, es wurden keine kürzlichen Scrobbles gefunden</em>";
+    }
+}
+add_shortcode('nowscr_lastfm_indicator', 'nowscr_lastfm_indicator_shortcode');
+
+
+/* // Define shortcodes for displaying activities and last activity times
+function nowscr_lastfm_history_shortcode() {
+    // Abrufen der Cache-Dauer aus den WordPress-Optionen
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
+    $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
+
+    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($scrobbles === false) {
+        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
+        // Speichern Sie die Scrobbles für 1 Stunde im Cache
+        set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
+    }
+
+    $output = '<ul class="lastfm-scrobbles">';
+    // Überprüfen Sie, ob $scrobbles ein Array ist
+    if (is_array($scrobbles)) {
+        foreach ($scrobbles as $track) {
+            $artist = esc_html($track->artist->{'#text'});
+            $song = esc_html($track->name);
+            $url = esc_url($track->url);
+            $nowPlaying = '';
+            if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
+                $nowPlaying = '<img src="' . plugins_url('public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
+                $output .= "<li class='now-playing'>{$nowPlaying} <a href='{$url}' target='_blank'>{$artist} - {$song}</a></li>";
+            } else {
+                $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$song}</a></li>";
+            }
+        }
+    }
+    $output .= '</ul>';
+    return $output;
+}
+add_shortcode('nowscr_lastfm_history', 'nowscr_lastfm_history_shortcode'); */
+
+function nowscr_lastfm_history_shortcode() {
+    // Abrufen der Cache-Dauer aus den WordPress-Optionen
+    // $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
+    // $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
+
+    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    // if ($scrobbles === false) {
+        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
+        // Speichern Sie die Scrobbles für 1 Stunde im Cache
+        // set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
+    // }
+
+    $output = '';
+    $lastPlayedTrack = null;
+
+    // Überprüfen Sie, ob $scrobbles ein Array ist
+    if (is_array($scrobbles)) {
+        foreach ($scrobbles as $track) {
+            if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
+                $artist = esc_html($track->artist->{'#text'});
+                $song = esc_html($track->name);
+                $url = esc_url($track->url);
+                $nowPlaying = '<img src="' . plugins_url('public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
+                $output = "<strong>Jetzt</strong> läuft <span class='bubble'>{$nowPlaying}<a href='{$url}' target='_blank'>{$artist} - {$song}</a></span>";
+                break;
+            } else {
+                $lastPlayedTrack = $track;
+            }
+        }
+    }
+
+    if (empty($output) && $lastPlayedTrack) {
+        $artist = esc_html($lastPlayedTrack->artist->{'#text'});
+        $song = esc_html($lastPlayedTrack->name);
+        $url = esc_url($lastPlayedTrack->url);
+        $output = "Zuletzt lief <a class='bubble' href='{$url}' target='_blank'>{$artist} - {$song}</a>";
+    }
+
+    return $output;
+}
+add_shortcode('nowscr_lastfm_history', 'nowscr_lastfm_history_shortcode');
+
+/* function nowscr_lastfm_top_artists_shortcode() {
+    $count = get_option('top_artists_count', 5); // Default 5 artists
+    $period = get_option('time_period', '7day'); // Default last 7 days
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Top-Künstler aus dem Transient Cache abzurufen
+    $data = get_transient('lastfm_top_artists');
+
+    // Wenn die Top-Künstler nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($data === false) {
+        $data = fetch_lastfm_data('topartists', $count, $period);
+        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
+        if ($data === null) {
+            return '<em>Komisch, es wurden keine Künstler gefunden</em>';
+        }
+        // Speichern Sie die Top-Künstler für 1 Stunde im Cache
+        set_transient('lastfm_top_artists', $data, $cache_duration);
+    }
+
+    $output = '<ul class="top-artists">'; // Add the CSS class here
+    foreach ($data['topartists']['artist'] as $artist) {
+        $name = esc_html($artist['name']);
+        $url = esc_url($artist['url']);
+
+        $output .= "<li><a href='{$url}' target='_blank'>{$name}</a></li>";
+    }
+    $output .= '</ul>';
+
+    return $output;
+}
+add_shortcode('nowscr_lastfm_top_artists', 'nowscr_lastfm_top_artists_shortcode'); */
+
+function nowscr_lastfm_top_artists_shortcode() {
+    $count = get_option('top_artists_count', 5); // Default 5 artists
+    $period = get_option('time_period', '7day'); // Default last 7 days
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Top-Künstler aus dem Transient Cache abzurufen
+    $data = get_transient('lastfm_top_artists');
+
+    // Wenn die Top-Künstler nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($data === false) {
+        $data = fetch_lastfm_data('topartists', $count, $period);
+        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
+        if ($data === null) {
+            return '<em>Komisch, es wurden keine Künstler gefunden</em>';
+        }
+        // Speichern Sie die Top-Künstler für 1 Minute im Cache
+        set_transient('lastfm_top_artists', $data, $cache_duration);
+    }
+
+    $artists = array();
+    foreach ($data['topartists']['artist'] as $artist) {
+        $name = esc_html($artist['name']);
+        $url = esc_url($artist['url']);
+
+        $artists[] = "<a class='bubble' href='{$url}' target='_blank'>{$name}</a>";
+    }
+
+     if (count($artists) > 1) {
+        $last_artist = array_pop($artists);
+        $output = implode(' ', $artists) . ' und ' . $last_artist;
+    } else {
+        $output = $artists[0];
+    } 
+
+    return $output;
+}
+add_shortcode('nowscr_lastfm_top_artists', 'nowscr_lastfm_top_artists_shortcode');
+
+function nowscr_lastfm_top_albums_shortcode() {
+    $count = get_option('top_albums_count', 5); // Default 5 albums
+    $period = get_option('time_period', '7day'); // Default last 7 days
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Top-Alben aus dem Transient Cache abzurufen
+    $data = get_transient('lastfm_top_albums');
+
+    // Wenn die Top-Alben nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($data === false) {
+        $data = fetch_lastfm_data('topalbums', $count, $period);
+        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
+        if ($data === null) {
+            return '<em>Komisch, es wurden keine Alben gefunden</em>';
+        }
+        // Speichern Sie die Top-Alben für 1 Stunde im Cache
+        set_transient('lastfm_top_albums', $data, $cache_duration);
+    }
+
+    $output = '<ul class="top-albums">'; // Add the CSS class here
+    foreach ($data['topalbums']['album'] as $album) {
+        $artist = esc_html($album['artist']['name']);
+        $title = esc_html($album['name']);
+        $url = esc_url($album['url']);
+
+        $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$title}</a></li>";
+    }
+    $output .= '</ul>';
+
+    return $output;
+}
+add_shortcode('nowscr_lastfm_top_albums', 'nowscr_lastfm_top_albums_shortcode');
+
+/* function nowscr_lastfm_top_tracks_shortcode() {
     $count = get_option('top_tracks_count', 5); // Default 5 tracks
     $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Top-Tracks aus dem Transient Cache abzurufen
     $data = get_transient('lastfm_top_tracks');
@@ -365,12 +625,12 @@ function shortcode_top_tracks() {
 
     return $output;
 }
-add_shortcode('top_tracks', 'shortcode_top_tracks');
+add_shortcode('nowscr_lastfm_top_tracks', 'nowscr_lastfm_top_tracks_shortcode'); */
 
-function shortcode_top_tracks_text() {
+function nowscr_lastfm_top_tracks_shortcode() {
     $count = get_option('top_tracks_count', 5); // Default 5 tracks
     $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Top-Tracks aus dem Transient Cache abzurufen
     $data = get_transient('lastfm_top_tracks');
@@ -404,115 +664,12 @@ function shortcode_top_tracks_text() {
 
     return $output;
 }
-add_shortcode('top_tracks_text', 'shortcode_top_tracks_text');
+add_shortcode('nowscr_lastfm_top_tracks', 'nowscr_lastfm_top_tracks_shortcode');
 
-function shortcode_top_artists() {
-    $count = get_option('top_artists_count', 5); // Default 5 artists
-    $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Top-Künstler aus dem Transient Cache abzurufen
-    $data = get_transient('lastfm_top_artists');
-
-    // Wenn die Top-Künstler nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($data === false) {
-        $data = fetch_lastfm_data('topartists', $count, $period);
-        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
-        if ($data === null) {
-            return '<em>Komisch, es wurden keine Künstler gefunden</em>';
-        }
-        // Speichern Sie die Top-Künstler für 1 Stunde im Cache
-        set_transient('lastfm_top_artists', $data, $cache_duration);
-    }
-
-    $output = '<ul class="top-artists">'; // Add the CSS class here
-    foreach ($data['topartists']['artist'] as $artist) {
-        $name = esc_html($artist['name']);
-        $url = esc_url($artist['url']);
-
-        $output .= "<li><a href='{$url}' target='_blank'>{$name}</a></li>";
-    }
-    $output .= '</ul>';
-
-    return $output;
-}
-add_shortcode('top_artists', 'shortcode_top_artists');
-
-function shortcode_top_artists_text() {
-    $count = get_option('top_artists_count', 5); // Default 5 artists
-    $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Top-Künstler aus dem Transient Cache abzurufen
-    $data = get_transient('lastfm_top_artists');
-
-    // Wenn die Top-Künstler nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($data === false) {
-        $data = fetch_lastfm_data('topartists', $count, $period);
-        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
-        if ($data === null) {
-            return '<em>Komisch, es wurden keine Künstler gefunden</em>';
-        }
-        // Speichern Sie die Top-Künstler für 1 Stunde im Cache
-        set_transient('lastfm_top_artists', $data, $cache_duration);
-    }
-
-    $artists = array();
-    foreach ($data['topartists']['artist'] as $artist) {
-        $name = esc_html($artist['name']);
-        $url = esc_url($artist['url']);
-
-        $artists[] = "<a class='bubble' href='{$url}' target='_blank'>{$name}</a>";
-    }
-
-     if (count($artists) > 1) {
-        $last_artist = array_pop($artists);
-        $output = implode(' ', $artists) . ' und ' . $last_artist;
-    } else {
-        $output = $artists[0];
-    } 
-
-    return $output;
-}
-add_shortcode('top_artists_text', 'shortcode_top_artists_text');
-
-function shortcode_top_albums() {
-    $count = get_option('top_albums_count', 5); // Default 5 albums
-    $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Top-Alben aus dem Transient Cache abzurufen
-    $data = get_transient('lastfm_top_albums');
-
-    // Wenn die Top-Alben nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($data === false) {
-        $data = fetch_lastfm_data('topalbums', $count, $period);
-        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
-        if ($data === null) {
-            return '<em>Komisch, es wurden keine Alben gefunden</em>';
-        }
-        // Speichern Sie die Top-Alben für 1 Stunde im Cache
-        set_transient('lastfm_top_albums', $data, $cache_duration);
-    }
-
-    $output = '<ul class="top-albums">'; // Add the CSS class here
-    foreach ($data['topalbums']['album'] as $album) {
-        $artist = esc_html($album['artist']['name']);
-        $title = esc_html($album['name']);
-        $url = esc_url($album['url']);
-
-        $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$title}</a></li>";
-    }
-    $output .= '</ul>';
-
-    return $output;
-}
-add_shortcode('top_albums', 'shortcode_top_albums');
-
-function shortcode_lovedtracks() {
+function nowscr_lastfm_lovedtracks_shortcode() {
     $count = get_option('lovedtracks_count', 5); // Default 5 lovedtracks
     $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
+    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Lieblingslieder aus dem Transient Cache abzurufen
     $lovedtracks = get_transient('lastfm_lovedtracks');
@@ -540,137 +697,15 @@ function shortcode_lovedtracks() {
 
     return $output;
 }
-add_shortcode('lovedtracks', 'shortcode_lovedtracks');
+add_shortcode('nowscr_lastfm_lovedtracks', 'nowscr_lastfm_lovedtracks_shortcode');
 
-
-
-// Define shortcodes for displaying activities and last activity times
-function nowscrobbling_lastfm_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
-    $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
-
-    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($scrobbles === false) {
-        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
-        // Speichern Sie die Scrobbles für 1 Stunde im Cache
-        set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
-    }
-
-    $output = '<ul class="lastfm-scrobbles">';
-    // Überprüfen Sie, ob $scrobbles ein Array ist
-    if (is_array($scrobbles)) {
-        foreach ($scrobbles as $track) {
-            $artist = esc_html($track->artist->{'#text'});
-            $song = esc_html($track->name);
-            $url = esc_url($track->url);
-            $nowPlaying = '';
-            if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
-                $nowPlaying = '<img src="' . plugins_url('nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-                $output .= "<li class='now-playing'>{$nowPlaying} <a href='{$url}' target='_blank'>{$artist} - {$song}</a></li>";
-            } else {
-                $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$song}</a></li>";
-            }
-        }
-    }
-    $output .= '</ul>';
-    return $output;
-}
-add_shortcode('lastfm_scrobbles', 'nowscrobbling_lastfm_shortcode');
-
-function nowscrobbling_lastfm_shortcode_bubble() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    // $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
-    // $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
-
-    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    // if ($scrobbles === false) {
-        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
-        // Speichern Sie die Scrobbles für 1 Stunde im Cache
-        // set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
-    // }
-
-    $output = '';
-    $lastPlayedTrack = null;
-
-    // Überprüfen Sie, ob $scrobbles ein Array ist
-    if (is_array($scrobbles)) {
-        foreach ($scrobbles as $track) {
-            if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
-                $artist = esc_html($track->artist->{'#text'});
-                $song = esc_html($track->name);
-                $url = esc_url($track->url);
-                $nowPlaying = '<img src="' . plugins_url('nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-                $output = "<strong>Jetzt</strong> läuft <span class='bubble'>{$nowPlaying}<a href='{$url}' target='_blank'>{$artist} - {$song}</a></span>";
-                break;
-            } else {
-                $lastPlayedTrack = $track;
-            }
-        }
-    }
-
-    if (empty($output) && $lastPlayedTrack) {
-        $artist = esc_html($lastPlayedTrack->artist->{'#text'});
-        $song = esc_html($lastPlayedTrack->name);
-        $url = esc_url($lastPlayedTrack->url);
-        $output = "Zuletzt lief <a class='bubble' href='{$url}' target='_blank'>{$artist} - {$song}</a>";
-    }
-
-    return $output;
-}
-add_shortcode('nowscrobbling_bubble', 'nowscrobbling_lastfm_shortcode_bubble');
-
-function nowscrobbling_lastfm_last_activity_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
-    $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
-
-    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($scrobbles === false) {
-        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
-        // Speichern Sie die Scrobbles für die festgelegte Cache-Dauer im Cache
-        set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
-    }
-
-    // Überprüfen Sie, ob $scrobbles ein Array ist
-    if (!is_array($scrobbles)) {
-        return $scrobbles; // oder eine andere Fehlermeldung, falls $scrobbles eine ist
-    }
-
-    if (empty($scrobbles)) {
-        return "<em>Komisch, es wurden keine kürzlichen Scrobbles gefunden</em>";
-    }
-
-    foreach ($scrobbles as $track) {
-        if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
-            return "<strong>Scrobbelt gerade</strong>";
-        }
-    }
-
-    $lastScrobble = reset($scrobbles); // Nimmt den ersten Scrobble aus der Liste
-    if (isset($lastScrobble->date)) {
-        $lastScrobbleTimestamp = $lastScrobble->date->uts;
-        $dateTime = new DateTime("@$lastScrobbleTimestamp");
-        $dateTime->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
-        return 'Zuletzt gehört: ' . $dateTime->format(get_option('date_format') . ' ' . get_option('time_format'));
-    } else {
-        return "<em>Komisch, es wurden keine kürzlichen Scrobbles gefunden</em>";
-    }
-}
-add_shortcode('lastfm_last_activity', 'nowscrobbling_lastfm_last_activity_shortcode');
 
 // TRAKT.TV
 
 // Fetch and display Trakt.tv activities
 function nowscrobbling_fetch_trakt_activities() {
     $transient_key = 'my_trakt_tv_activities';
-    $cache_duration = get_option('trakt_cache_duration', 15); // Default 15 Minuten
+    $cache_duration = get_option('trakt_cache_duration', 5); // Default 5 Minuten
     $activity_limit = get_option('trakt_activity_limit', 25); // Default 25 Aktivitäten
 
     // Überprüfen, ob die Daten bereits im Cache vorhanden sind
@@ -708,61 +743,9 @@ function nowscrobbling_fetch_trakt_activities() {
     return $activities;
 }
 
-function nowscrobbling_last_movie_shortcode() {
+function nowscr_trakt_indicator_shortcode() {
     // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
-
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für die festgelegte Cache-Dauer im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
-    }
-
-    // Durchlaufen Sie die Aktivitäten rückwärts, um den letzten Film zu finden
-    for ($i = count($activities) - 1; $i >= 0; $i--) {
-        if ($activities[$i]['type'] == 'movie') {
-            $title = "{$activities[$i]['movie']['title']} ({$activities[$i]['movie']['year']})";
-            $link = "https://trakt.tv/movies/{$activities[$i]['movie']['ids']['slug']}";
-            return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
-        }
-    }
-    return '<em>Kein letzter Film gefunden</em>';
-}
-add_shortcode('last_movie', 'nowscrobbling_last_movie_shortcode');
-
-function nowscrobbling_trakt_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
-
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für 1 Stunde im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
-    }
-
-    $output = '<ul class="trakt-tv-activities">';
-    foreach ($activities as $activity) {
-        $type = $activity['type'];
-        $title = $type == 'movie' ? "{$activity['movie']['title']} ({$activity['movie']['year']})" : "{$activity['show']['title']} - S{$activity['episode']['season']}E{$activity['episode']['number']} {$activity['episode']['title']}";
-        $link = $type == 'movie' ? "https://trakt.tv/movies/{$activity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$activity['show']['ids']['slug']}/seasons/{$activity['episode']['season']}/episodes/{$activity['episode']['number']}";
-        $output .= "<li><a href='{$link}' target='_blank'>{$title}</a></li>";
-    }
-    $output .= '</ul>';
-    return $output;
-}
-add_shortcode('trakt_activities', 'nowscrobbling_trakt_shortcode');
-
-function nowscrobbling_trakt_last_activity_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('cache_duration', 15) * MINUTE_IN_SECONDS;
+    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
     $activities = get_transient('nowscrobbling_trakt_activities');
@@ -786,11 +769,63 @@ function nowscrobbling_trakt_last_activity_shortcode() {
 
     return 'Zuletzt geschaut: ' . $date->format(get_option('date_format') . ' ' . get_option('time_format'));
 }
-add_shortcode('trakt_last_activity', 'nowscrobbling_trakt_last_activity_shortcode');
+add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
 
-function nowscrobbling_last_show_shortcode() {
+function nowscr_trakt_history_shortcode() {
     // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 15) * MINUTE_IN_SECONDS;
+    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
+    $activities = get_transient('nowscrobbling_trakt_activities');
+
+    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($activities === false) {
+        $activities = nowscrobbling_fetch_trakt_activities();
+        // Speichern Sie die Aktivitäten für 1 Stunde im Cache
+        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    }
+
+    $output = '<ul class="trakt-tv-activities">';
+    foreach ($activities as $activity) {
+        $type = $activity['type'];
+        $title = $type == 'movie' ? "{$activity['movie']['title']} ({$activity['movie']['year']})" : "{$activity['show']['title']} - S{$activity['episode']['season']}E{$activity['episode']['number']} {$activity['episode']['title']}";
+        $link = $type == 'movie' ? "https://trakt.tv/movies/{$activity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$activity['show']['ids']['slug']}/seasons/{$activity['episode']['season']}/episodes/{$activity['episode']['number']}";
+        $output .= "<li><a href='{$link}' target='_blank'>{$title}</a></li>";
+    }
+    $output .= '</ul>';
+    return $output;
+}
+add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
+
+function nowscr_trakt_last_movie_shortcode() {
+    // Abrufen der Cache-Dauer aus den WordPress-Optionen
+    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+
+    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
+    $activities = get_transient('nowscrobbling_trakt_activities');
+
+    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
+    if ($activities === false) {
+        $activities = nowscrobbling_fetch_trakt_activities();
+        // Speichern Sie die Aktivitäten für die festgelegte Cache-Dauer im Cache
+        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    }
+
+    // Durchlaufen Sie die Aktivitäten rückwärts, um den letzten Film zu finden
+    for ($i = count($activities) - 1; $i >= 0; $i--) {
+        if ($activities[$i]['type'] == 'movie') {
+            $title = "{$activities[$i]['movie']['title']} ({$activities[$i]['movie']['year']})";
+            $link = "https://trakt.tv/movies/{$activities[$i]['movie']['ids']['slug']}";
+            return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
+        }
+    }
+    return '<em>Kein letzter Film gefunden</em>';
+}
+add_shortcode('nowscr_trakt_last_movie', 'nowscr_trakt_last_movie_shortcode');
+
+function nowscr_trakt_last_show_shortcode() {
+    // Abrufen der Cache-Dauer aus den WordPress-Optionen
+    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
     $activities = get_transient('nowscrobbling_trakt_activities');
@@ -811,11 +846,11 @@ function nowscrobbling_last_show_shortcode() {
     }
     return '<em>Keine letzte Serie gefunden</em>';
 }
-add_shortcode('last_show', 'nowscrobbling_last_show_shortcode');
+add_shortcode('nowscr_trakt_last_show', 'nowscr_trakt_last_show_shortcode');
 
-function nowscrobbling_last_episode_shortcode() {
+function nowscr_trakt_last_episode_shortcode() {
     // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 15) * MINUTE_IN_SECONDS;
+    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
     $activities = get_transient('nowscrobbling_trakt_activities');
@@ -836,4 +871,4 @@ function nowscrobbling_last_episode_shortcode() {
     }
     return '<em>Keine letzte Folge gefunden</em>';
 }
-add_shortcode('last_episode', 'nowscrobbling_last_episode_shortcode');
+add_shortcode('nowscr_trakt_last_episode', 'nowscr_trakt_last_episode_shortcode');
