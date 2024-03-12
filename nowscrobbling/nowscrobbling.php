@@ -568,7 +568,6 @@ function nowscr_lastfm_top_tracks_shortcode() {
     } else {
         $output = $tracks[0];
     }
-
     return $output;
 }
 add_shortcode('nowscr_lastfm_top_tracks', 'nowscr_lastfm_top_tracks_shortcode');
