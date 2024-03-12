@@ -4,7 +4,7 @@
  * Plugin Name:         NowScrobbling
  * Plugin URI:          https://github.com/willrobin/NowScrobbling
  * Description:         NowScrobbling ist ein einfaches WordPress-Plugin, um API-Einstellungen für last.fm und trakt.tv zu verwalten und deren letzte Aktivitäten anzuzeigen.
- * Version:             1.0.7
+ * Version:             1.0.8
  * Requires at least:   
  * Requires PHP:        
  * Author:              Robin Will
@@ -32,7 +32,7 @@ function nowscrobbling_register_settings()
 {
     $settings = [
         'lastfm_api_key', 'lastfm_user', 'trakt_client_id', 'trakt_user',
-        'top_tracks_count', 'top_artists_count', 'top_albums_count', 'lovedtracks_count',
+        'top_tracks_count', 'top_artists_count', 'top_albums_count', 'lovedtracks_count',  'top_tags_count', 'last_movies_count', 'last_shows_count', 'last_episodes_count',
         'time_period', 'cache_duration', 'lastfm_cache_duration', 'trakt_cache_duration',
         'lastfm_activity_limit', 'trakt_activity_limit'
     ];
@@ -49,6 +49,10 @@ function nowscrobbling_add_settings_fields()
     add_settings_field('top_artists_count', 'Anzahl der Top-Künstler', 'nowscrobbling_top_artists_count_callback', 'nowscrobbling', 'nowscrobbling_section');
     add_settings_field('top_albums_count', 'Anzahl der Top-Alben', 'nowscrobbling_top_albums_count_callback', 'nowscrobbling', 'nowscrobbling_section');
     add_settings_field('lovedtracks_count', 'Anzahl der Lieblingslieder', 'nowscrobbling_lovedtracks_count_callback', 'nowscrobbling', 'nowscrobbling_section');
+    add_settings_field('top_tags_count', 'Anzahl der Top-Tags', 'nowscrobbling_top_tags_count_callback', 'nowscrobbling', 'nowscrobbling_section');
+    add_settings_field('last_movies_count', 'Anzahl der Lieblingslieder', 'nowscrobbling_last_movies_count_callback', 'nowscrobbling', 'nowscrobbling_section');
+    add_settings_field('last_shows_count', 'Anzahl der Lieblingslieder', 'nowscrobbling_last_shows_count_callback', 'nowscrobbling', 'nowscrobbling_section');
+    add_settings_field('last_episodes_count', 'Anzahl der Lieblingslieder', 'nowscrobbling_last_episodes_count_callback', 'nowscrobbling', 'nowscrobbling_section');
 
     // Add settings field for time period
     add_settings_field('time_period', 'Zeitraum', 'nowscrobbling_time_period_callback', 'nowscrobbling', 'nowscrobbling_section');
@@ -83,6 +87,34 @@ function nowscrobbling_lovedtracks_count_callback()
 {
     $setting = esc_attr(get_option('lovedtracks_count', 3));
     echo "<input type='number' name='lovedtracks_count' value='$setting' min='1' />";
+}
+
+// Callback-Funktion für 'top_tags_count'
+function nowscrobbling_top_tags_count_callback()
+{
+    $setting = esc_attr(get_option('top_tags_count', 3));
+    echo "<input type='number' name='top_tags_count' value='$setting' min='1' />";
+}
+
+// Callback-Funktion für 'last_movies_count'
+function nowscrobbling_last_movies_count_callback()
+{
+    $setting = esc_attr(get_option('last_movies_count', 3));
+    echo "<input type='number' name='last_movies_count' value='$setting' min='1' />";
+}
+
+// Callback-Funktion für 'last_shows_count'
+function nowscrobbling_last_shows_count_callback()
+{
+    $setting = esc_attr(get_option('last_shows_count', 3));
+    echo "<input type='number' name='last_shows_count' value='$setting' min='1' />";
+}
+
+// Callback-Funktion für 'last_episodes_count'
+function nowscrobbling_last_episodes_count_callback()
+{
+    $setting = esc_attr(get_option('last_episodes_count', 3));
+    echo "<input type='number' name='last_episodes_count' value='$setting' min='1' />";
 }
 
 // Callback-Funktion für 'time_period'
@@ -153,6 +185,10 @@ function nowscrobbling_settings_page()
                     <td><input type="number" name="lovedtracks_count" value="<?php echo esc_attr(get_option('lovedtracks_count', 5)); ?>" /></td>
                 </tr>
                 <tr valign="top">
+                <th scope="row">Anzahl der Top-Tags</th>
+                <td><input type="number" name="top_tags_count" value="<?php echo esc_attr(get_option('top_tags_count', 3)); ?>" /></td>
+                </tr>
+                <tr valign="top">
                     <th scope="row">Zeitraum (außer Alben)</th>
                     <td>
                         <select name="time_period">
@@ -165,6 +201,7 @@ function nowscrobbling_settings_page()
                         </select>
                     </td>
                 </tr>
+
             </table>
             <h2>Trakt</h2>
             <table class="form-table">
@@ -180,6 +217,18 @@ function nowscrobbling_settings_page()
                 <tr valign="top">
                     <th scope="row">Anzahl der trakt.tv Aktivitäten</th>
                     <td><input type="number" name="trakt_activity_limit" value="<?php echo esc_attr(get_option('trakt_activity_limit', 3)); ?>" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row">Anzahl der letzten Filme</th>
+                    <td><input type="number" name="last_movies_count" value="<?php echo esc_attr(get_option('last_movies_count', 3)); ?>" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row">Anzahl der letzten Serien</th>
+                    <td><input type="number" name="last_shows_count" value="<?php echo esc_attr(get_option('last_shows_count', 3)); ?>" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row">Anzahl der letzten Episoden</th>
+                    <td><input type="number" name="last_episodes_count" value="<?php echo esc_attr(get_option('last_episodes_count', 3)); ?>" /></td>
                 </tr>
             </table>
             <h2>Cache</h2>
@@ -209,21 +258,23 @@ function nowscrobbling_settings_page()
         <h3>
             Last.fm</h2>
             <ul>
-                <li><code>[nowscr_lastfm_indicator]</code> - Zeigt den Status der Last.fm Aktivität an.</li>
+                <li><code>[nowscr_lastfm_indicator]</code> - Zeigt den aktuellen Status der Last.fm Aktivität an.</li>
                 <li><code>[nowscr_lastfm_history]</code> - Zeigt die letzten Scrobbles von Last.fm an.</li>
-                <li><code>[nowscr_lastfm_top_artists]</code> - Zeigt die Top-Künstler von Last.fm im gewählten Zeitraum an.</li>
-                <li><code>[nowscr_lastfm_top_albums]</code> - Zeigt die Top-Alben von Last.fm im gewählten Zeitraum an.</li>
-                <li><code>[nowscr_lastfm_top_tracks]</code> - Zeigt die Top-Titel von Last.fm im gewählten Zeitraum an.</li>
-                <li><code>[nowscr_lastfm_lovedtracks]</code> - Zeigt die Lieblingslieder von Last.fm an.</li>
+                <li><code>[nowscr_lastfm_top_artists]</code> - Zeigt die letzten Top-Künstler von Last.fm im gewählten Zeitraum an.</li>
+                <li><code>[nowscr_lastfm_top_albums]</code> - Zeigt die letzten Top-Alben von Last.fm <del>im gewählten Zeitraum</del> an.</li>
+                <li><code>[nowscr_lastfm_top_tracks]</code> - Zeigt die letzten Top-Titel von Last.fm im gewählten Zeitraum an.</li>
+                <li><code>[nowscr_lastfm_lovedtracks]</code> - Zeigt die letzten Lieblingslieder von Last.fm an.</li>
+                <li><code>[nowscr_lastfm_top_tags]</code> - Zeigt die letzten Top-Tags von Last.fm an.</li>
             </ul>
             <h3>
                 Trakt</h2>
                 <ul>
-                    <li><code>[nowscr_trakt_indicator]</code> - Zeigt den Status der Trakt Aktivität an.</li>
+                    <li><code>[nowscr_trakt_indicator]</code> - Zeigt den aktuellen Status der Trakt Aktivität an.</li>
                     <li><code>[nowscr_trakt_history]</code> - Zeigt die letzten Scrobbles von Trakt an.</li>
-                    <li><code>[nowscr_trakt_last_movie]</code> - Zeigt den letzten Film von Trakt an.</li>
-                    <li><code>[nowscr_trakt_last_show]</code> - Zeigt die letzte Serie von Trakt an.</li>
-                    <li><code>[nowscr_trakt_last_episode]</code> - Zeigt die letzte Episode von Trakt an.</li>
+                    <li><code>[nowscr_trakt_last_movie]</code> - Zeigt die letzten Filme von Trakt an.</li>
+                    <li><code>[nowscr_trakt_last_movie_with_rating]</code> - Zeigt die letzten Filme mit Bewertung von Trakt an.</li>
+                    <li><code>[nowscr_trakt_last_show]</code> - Zeigt die letzten Serien von Trakt an.</li>
+                    <li><code>[nowscr_trakt_last_episode]</code> - Zeigt die letzten Episoden von Trakt an.</li>
     </div>
     <!-- Beginn der Vorschau-Bereich -->
     <div class="wrap">
@@ -236,18 +287,22 @@ function nowscrobbling_settings_page()
             <h3>Letzte Scrobbles (History)</h3>
             <?php echo nowscr_lastfm_history_shortcode(); // Zeigt die letzten Scrobbles von Last.fm an. 
             ?>
-            <h3>Top-Künstler</h3>
+            <h3>Letzte Top-Künstler</h3>
             <?php echo nowscr_lastfm_top_artists_shortcode(); // Zeigt die Top-Künstler von Last.fm im gewählten Zeitraum an. 
             ?>
-            <h3>Top-Alben</h3>
+            <h3>Letzte Top-Alben</h3>
             <?php echo nowscr_lastfm_top_albums_shortcode(); // Zeigt die Top-Alben von Last.fm im gewählten Zeitraum an. 
             ?>
-            <h3>Top-Titel</h3>
+            <h3>Letzte Top-Titel</h3>
             <?php echo nowscr_lastfm_top_tracks_shortcode(); // Zeigt die Top-Titel von Last.fm im gewählten Zeitraum an. 
             ?>
-            <h3>Lieblingslieder</h3>
+            <h3>Letzte Lieblingslieder</h3>
             <?php echo nowscr_lastfm_lovedtracks_shortcode(); // Zeigt die Lieblingslieder von Last.fm an. 
             ?>
+            <h3>Letzte Top-Tags</h3>
+            <?php echo nowscr_lastfm_top_tags_shortcode(); // Zeigt die Top-Tags von Last.fm an.
+            ?>
+            
             <h2>Trakt</h2>
             <h3>Status (Indicator)</h3>
             <?php echo nowscr_trakt_indicator_shortcode(); // Zeigt den Status der Trakt Aktivität an. 
@@ -255,16 +310,16 @@ function nowscrobbling_settings_page()
             <h3>Letzte Scrobbles (History)</h3>
             <?php echo nowscr_trakt_history_shortcode(); // Zeigt die letzten Scrobbles von Trakt an. 
             ?>
-            <h3>Letzter Film</h3>
+            <h3>Letzte Filme</h3>
             <?php echo nowscr_trakt_last_movie_shortcode(); // Zeigt den letzten Film von Trakt an. 
             ?>
-            <h3>Letzter Film (mit Bewertung)</h3>
+            <h3>Letzte Filme (mit Bewertung)</h3>
             <?php echo nowscr_trakt_last_movie_with_rating_shortcode(); // Zeigt den letzten Film von Trakt an. 
             ?>
-            <h3>Letzter Serie</h3>
+            <h3>Letzte Serien</h3>
             <?php echo nowscr_trakt_last_show_shortcode(); // Zeigt die letzte Serie von Trakt an. 
             ?>
-            <h3>Letzte Episode</h3>
+            <h3>Letzte Episoden</h3>
             <?php echo nowscr_trakt_last_episode_shortcode(); // Zeigt die letzte Episode von Trakt an. 
             ?>
         </div>
@@ -278,40 +333,6 @@ function nowscrobbling_styles()
 {
 ?>
     <style type="text/css">
-        .lastfm-scrobbles ol,
-        .lastfm-scrobbles ul,
-        .lastfm-scrobbles li,
-        .trakt-tv-activities ol,
-        .trakt-tv-activities ul,
-        .trakt-tv-activities li,
-        .top-tracks ol,
-        .top-tracks ul,
-        .top-tracks li,
-        .top-artists ol,
-        .top-artists ul,
-        .top-artists li,
-        .top-albums ol,
-        .top-albums ul,
-        .top-albums li,
-        .lovedtracks ol,
-        .lovedtracks ul,
-        .lovedtracks li {
-            list-style-type: none !important;
-            padding-left: 0 !important;
-            margin: 0 !important;
-            margin-left: 0 !important;
-        }
-
-        .lastfm-scrobbles li a,
-        .trakt-tv-activities li a,
-        .top-tracks li a,
-        .top-artists li a,
-        .top-albums li a,
-        .lovedtracks li a,
-        {
-        text-decoration: none;
-        }
-
         .nowscrobbling {
             background-color: rgba(38, 144, 255, 0.1);
             /* Hintergrundfarbe für den aktuell laufenden Track */
@@ -327,13 +348,6 @@ function nowscrobbling_styles()
             margin-left: 10px;
             margin-right: 5px;
             margin-bottom: 0 !important;
-        }
-
-        ol,
-        ul,
-        li {
-            margin: 0 !important;
-            /* Entfernt den linken Außenabstand */
         }
 
         .bubble {
@@ -407,8 +421,39 @@ function fetch_lastfm_data($type, $count = null, $period = null)
     $data = json_decode(wp_remote_retrieve_body($response), true);
     return $data;
 }
+function fetch_lastfm_top_tags($user, $api_key, $limit = 5) {
+    $url = "http://ws.audioscrobbler.com/2.0/?method=user.gettoptags&user={$user}&api_key={$api_key}&limit={$limit}&format=json";
+    $response = wp_remote_get($url);
+    if (is_wp_error($response) || 200 != wp_remote_retrieve_response_code($response)) {
+        return null; // Im Fehlerfall nicht cachen, ggf. Fehlerbehandlung durchführen
+    }
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    if (!isset($data['toptags']['tag'])) {
+        return null; // Fehlerbehandlung, falls die erwarteten Daten nicht vorhanden sind
+    }
+    return $data['toptags']['tag'];
+}
+
+function nowscr_lastfm_top_tags_shortcode() {
+    $api_key = get_option('lastfm_api_key');
+    $user = get_option('lastfm_user');
+    $limit = get_option('top_tags_count', 5); // Verwenden Sie den im Admin-Panel festgelegten Wert
+    $tags = fetch_lastfm_top_tags($user, $api_key, $limit);
+    if (is_null($tags)) {
+        return "Es konnten keine Top-Tags gefunden werden.";
+    }
+    $tagList = array_map(function ($tag) {
+        return '<a href="' . esc_url($tag['url']) . '" class="bubble">' . esc_html($tag['name']) . '</a>';
+    }, $tags);
+    return implode(' ', $tagList);
+}
+add_shortcode('nowscr_lastfm_top_tags', 'nowscr_lastfm_top_tags_shortcode');
+
 // SHORTCODES
+
 // last.fm
+
 // Zeigt den Status der Last.fm Aktivität an
 function nowscr_lastfm_indicator_shortcode()
 {
@@ -442,6 +487,7 @@ function nowscr_lastfm_indicator_shortcode()
     }
 }
 add_shortcode('nowscr_lastfm_indicator', 'nowscr_lastfm_indicator_shortcode');
+
 // Zeigt die letzten Scrobbles von Last.fm an
 function nowscr_lastfm_history_shortcode()
 {
@@ -481,6 +527,7 @@ function nowscr_lastfm_history_shortcode()
     return $output;
 }
 add_shortcode('nowscr_lastfm_history', 'nowscr_lastfm_history_shortcode');
+
 function nowscr_lastfm_top_artists_shortcode()
 {
     $count = get_option('top_artists_count', 5); // Default 5 artists
@@ -513,6 +560,7 @@ function nowscr_lastfm_top_artists_shortcode()
     return $output;
 }
 add_shortcode('nowscr_lastfm_top_artists', 'nowscr_lastfm_top_artists_shortcode');
+
 function nowscr_lastfm_top_albums_shortcode()
 {
     $count = get_option('top_albums_count', 1); // Default 1 albums
@@ -546,6 +594,7 @@ function nowscr_lastfm_top_albums_shortcode()
     return $output;
 }
 add_shortcode('nowscr_lastfm_top_albums', 'nowscr_lastfm_top_albums_shortcode');
+
 function nowscr_lastfm_top_tracks_shortcode()
 {
     $count = get_option('top_tracks_count', 5); // Default 5 tracks
@@ -579,6 +628,7 @@ function nowscr_lastfm_top_tracks_shortcode()
     return $output;
 }
 add_shortcode('nowscr_lastfm_top_tracks', 'nowscr_lastfm_top_tracks_shortcode');
+
 function nowscr_lastfm_lovedtracks_shortcode()
 {
     $count = get_option('lovedtracks_count', 3); // Default 5 top tracks
@@ -587,7 +637,7 @@ function nowscr_lastfm_lovedtracks_shortcode()
     $data = get_transient('lastfm_loved_tracks');
     // Wenn die Top-Tracks nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
     if ($data === false) {
-        $data = fetch_lastfm_data('lovedtracks', $count, $period);
+        $data = fetch_lastfm_data('lovedtracks', $count);
         // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
         if ($data === null) {
             return '<em>Komisch, es wurden keine geliebten Titel gefunden</em>';
@@ -611,38 +661,9 @@ function nowscr_lastfm_lovedtracks_shortcode()
     return $output;
 }
 add_shortcode('nowscr_lastfm_lovedtracks', 'nowscr_lastfm_lovedtracks_shortcode');
-/* function nowscr_lastfm_top_tags_shortcode()
-{
-    $count = get_option('top_tags_count', 5); // Default 5 top tags
-    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
-    // Versuchen Sie, die Top-Tags aus dem Transient Cache abzurufen
-    $data = get_transient('lastfm_top_tags');
-    // Wenn die Top-Tags nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($data === false) {
-        $data = fetch_lastfm_data('toptags', $count);
-        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
-        if ($data === null) {
-            return '<em>Komisch, es wurden keine Tags gefunden</em>';
-        }
-        // Speichern Sie die Top-Tags für 1 Stunde im Cache
-        set_transient('lastfm_top_tags', $data, $cache_duration);
-    }
-    $tags = array();
-    foreach ($data['toptags']['tag'] as $tag) {
-        $name = esc_html($tag['name']);
-        $url = esc_url($tag['url']);
-        $tags[] = "<a class='bubble' href='{$url}' target='_blank'>{$name}</a>";
-    }
-    if (count($tags) > 1) {
-        $last_tag = array_pop($tags);
-        $output = implode(' ', $tags) . ' und ' . $last_tag;
-    } else {
-        $output = $tags[0];
-    }
-    return $output;
-}
-add_shortcode('nowscr_lastfm_top_tags', 'nowscr_lastfm_top_tags_shortcode'); */
+
 // TRAKT.TV
+
 // Fetch and display Trakt.tv activities
 function nowscrobbling_fetch_trakt_activities()
 {
@@ -715,6 +736,7 @@ function nowscr_trakt_indicator_shortcode()
     return 'Zuletzt geschaut: ' . $date->format(get_option('date_format') . ' ' . get_option('time_format'));
 }
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
+
 function nowscr_trakt_history_shortcode()
 {
     $client_id = get_option('trakt_client_id');
@@ -752,11 +774,14 @@ function nowscr_trakt_history_shortcode()
     return "<span class='bubble'><a href='{$link}' target='_blank'>{$title}</a></span>";
 }
 add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
+
 function nowscr_trakt_last_movie_shortcode()
 {
     $client_id = get_option('trakt_client_id');
     $user = get_option('trakt_user');
-    $watched_movies_url = "https://api.trakt.tv/users/{$user}/history/movies";
+    // Hole die Einstellung für die Anzahl der letzten Filme
+    $movies_count = get_option('last_movies_count', 3); // Standardwert ist 3, falls nicht gesetzt
+    $watched_movies_url = "https://api.trakt.tv/users/{$user}/history/movies?limit={$movies_count}";
     $response = wp_remote_get($watched_movies_url, [
         'headers' => [
             'Content-Type' => 'application/json',
@@ -771,19 +796,37 @@ function nowscr_trakt_last_movie_shortcode()
     if (empty($movies)) {
         return '<em>Keine Filme gefunden</em>';
     }
-    $last_movie = $movies[0];
-    $title = $last_movie['movie']['title'] . ' (' . $last_movie['movie']['year'] . ')';
-    $link = "https://trakt.tv/movies/" . $last_movie['movie']['ids']['slug'];
-    return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
+    // Erstelle Ausgaben für alle abgerufenen Filme
+    $output = '';
+    $movie_items = [];
+    foreach ($movies as $movie) {
+        $title = $movie['movie']['title'] . ' (' . $movie['movie']['year'] . ')';
+        $link = "https://trakt.tv/movies/" . $movie['movie']['ids']['slug'];
+        $movie_items[] = "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
+    }
+
+    if (count($movie_items) > 1) {
+        // Wenn es mehr als einen Film gibt, füge sie mit Komma und " und " für das letzte Element zusammen
+        $last_movie = array_pop($movie_items); // Entferne und speichere das letzte Element
+        $output = implode(' ', $movie_items) . ' und ' . $last_movie;
+    } else {
+        // Wenn nur ein Film vorhanden ist, gib diesen direkt zurück
+        $output = $movie_items[0];
+    }
+
+    return $output;
 }
 add_shortcode('nowscr_trakt_last_movie', 'nowscr_trakt_last_movie_shortcode');
+
 function nowscr_trakt_last_movie_with_rating_shortcode()
 {
     $client_id = get_option('trakt_client_id');
     $user = get_option('trakt_user');
-    $watched_movies_url = "https://api.trakt.tv/users/{$user}/history/movies";
+    // Einstellung für die Anzahl der letzten Filme
+    $movies_count = get_option('last_movies_count', 3);
+    $watched_movies_url = "https://api.trakt.tv/users/{$user}/history/movies?limit={$movies_count}";
     $ratings_url = "https://api.trakt.tv/users/{$user}/ratings/movies";
-    // Anfrage für zuletzt angesehene Filme
+
     $response_watched = wp_remote_get($watched_movies_url, [
         'headers' => [
             'Content-Type' => 'application/json',
@@ -791,7 +834,7 @@ function nowscr_trakt_last_movie_with_rating_shortcode()
             'trakt-api-key' => $client_id
         ]
     ]);
-    // Anfrage für Bewertungen
+    
     $response_ratings = wp_remote_get($ratings_url, [
         'headers' => [
             'Content-Type' => 'application/json',
@@ -799,75 +842,149 @@ function nowscr_trakt_last_movie_with_rating_shortcode()
             'trakt-api-key' => $client_id
         ]
     ]);
+
     if (is_wp_error($response_watched) || is_wp_error($response_ratings)) {
         return '<em>Fehler beim Abrufen der Daten von trakt.tv</em>';
     }
+
     $movies = json_decode(wp_remote_retrieve_body($response_watched), true);
     $ratings = json_decode(wp_remote_retrieve_body($response_ratings), true);
+    
     if (empty($movies)) {
         return '<em>Keine Filme gefunden</em>';
     }
-    $last_movie = $movies[0];
-    $title = $last_movie['movie']['title'] . ' (' . $last_movie['movie']['year'] . ')';
-    $link = "https://trakt.tv/movies/" . $last_movie['movie']['ids']['slug'];
-    // Suche nach der Bewertung für den zuletzt angesehenen Film
-    $rating_text = '';
-    foreach ($ratings as $rating) {
-        if ($rating['movie']['ids']['trakt'] == $last_movie['movie']['ids']['trakt']) {
-            $rating_text = " ich habe ihn mit <span class='bubble' style='font-weight: bold;'>" . $rating['rating'] . "/10</span>" . " bewertet.";
-            break;
+
+    // Erstelle Ausgaben für alle abgerufenen Filme
+    $movie_items = [];
+    foreach ($movies as $movie) {
+        $movie_id = $movie['movie']['ids']['trakt'];
+        $title = $movie['movie']['title'] . ' (' . $movie['movie']['year'] . ')';
+        $link = "https://trakt.tv/movies/" . $movie['movie']['ids']['slug'];
+
+        // Suche nach der Bewertung für jeden Film
+        $rating_text = '';
+        foreach ($ratings as $rating) {
+            if ($rating['movie']['ids']['trakt'] === $movie_id) {
+                $rating_text = "<span style='font-style: italic; font-weight: bold;'>" . $rating['rating'] . "/10</span>";
+                break;
+            }
         }
+        $movie_items[] = "<span class='bubble'><a href='{$link}' target='_blank'>{$title}</a> {$rating_text}</span>";
     }
-    return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a> {$rating_text}";
+
+    $output = '';
+    if (count($movie_items) > 1) {
+        // Wenn es mehr als einen Film gibt, füge sie mit Komma und " und " für das letzte Element zusammen
+        $last_movie_item = array_pop($movie_items); // Entferne und speichere das letzte Element
+        $output = implode(' ', $movie_items) . ' und ' . $last_movie_item;
+    } else {
+        // Wenn nur ein Film vorhanden ist, gib diesen direkt zurück
+        $output = $movie_items[0];
+    }
+
+    return $output;
 }
 add_shortcode('nowscr_trakt_last_movie_with_rating', 'nowscr_trakt_last_movie_with_rating_shortcode');
+
 function nowscr_trakt_last_show_shortcode()
 {
     $client_id = get_option('trakt_client_id');
     $user = get_option('trakt_user');
-    $watched_shows_url = "https://api.trakt.tv/users/{$user}/history/shows";
-    $response = wp_remote_get($watched_shows_url, [
+    // Einstellung für die Anzahl der letzten Aktivitäten bezüglich Serien
+    $shows_count = get_option('last_shows_count', 3); // Standardwert ist 3, falls nicht gesetzt
+    $history_shows_url = "https://api.trakt.tv/users/{$user}/history/shows?limit={$shows_count}";
+
+    $response = wp_remote_get($history_shows_url, [
         'headers' => [
             'Content-Type' => 'application/json',
             'trakt-api-version' => '2',
             'trakt-api-key' => $client_id
         ]
     ]);
+    
     if (is_wp_error($response)) {
-        return '<em>Fehler beim Abrufen der letzten Serien von trakt.tv</em>';
+        return '<em>Fehler beim Abrufen der letzten Serienaktivitäten von trakt.tv</em>';
     }
-    $shows = json_decode(wp_remote_retrieve_body($response), true);
-    if (empty($shows)) {
-        return '<em>Keine Serien gefunden</em>';
+    
+    $activities = json_decode(wp_remote_retrieve_body($response), true);
+    
+    if (empty($activities)) {
+        return '<em>Keine Serienaktivitäten gefunden</em>';
     }
-    $last_show = $shows[0];
-    $showTitle = "{$last_show['show']['title']} ({$last_show['show']['year']})";
-    $link = "https://trakt.tv/shows/{$last_show['show']['ids']['slug']}";
-    return "<a class='bubble' href='{$link}' target='_blank'>{$showTitle}</a>";
+    
+    // Erstelle Ausgaben für die letzten Serienaktivitäten
+    $show_items = [];
+    foreach ($activities as $activity) {
+        $title = $activity['show']['title'] . ' (' . $activity['show']['year'] . ')'; // Hinzufügen der Jahreszahl
+        $season = $activity['episode']['season'];
+        $episode = $activity['episode']['number'];
+        $episodeTitle = $activity['episode']['title'];
+        $link = "https://trakt.tv/shows/" . $activity['show']['ids']['slug'];
+        $show_items[] = "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
+    }
+
+    $output = '';
+    if (count($show_items) > 1) {
+        // Wenn es mehr als eine Serie gibt, füge sie mit Komma und " und " für das letzte Element zusammen
+        $last_show_item = array_pop($show_items); // Entferne und speichere das letzte Element
+        $output = implode(', ', $show_items) . ' und ' . $last_show_item;
+    } else {
+        // Wenn nur eine Serie vorhanden ist, gib diese direkt zurück
+        $output = $show_items[0];
+    }
+
+    return $output;
 }
 add_shortcode('nowscr_trakt_last_show', 'nowscr_trakt_last_show_shortcode');
+
 function nowscr_trakt_last_episode_shortcode()
 {
     $client_id = get_option('trakt_client_id');
     $user = get_option('trakt_user');
-    $watched_episodes_url = "https://api.trakt.tv/users/{$user}/history/episodes";
-    $response = wp_remote_get($watched_episodes_url, [
+    // Einstellung für die Anzahl der letzten Episoden
+    $episodes_count = get_option('last_episodes_count', 3); // Standardwert ist 3, falls nicht gesetzt
+    $history_episodes_url = "https://api.trakt.tv/users/{$user}/history/episodes?limit={$episodes_count}";
+
+    $response = wp_remote_get($history_episodes_url, [
         'headers' => [
             'Content-Type' => 'application/json',
             'trakt-api-version' => '2',
             'trakt-api-key' => $client_id
         ]
     ]);
+    
     if (is_wp_error($response)) {
         return '<em>Fehler beim Abrufen der letzten Episoden von trakt.tv</em>';
     }
+    
     $episodes = json_decode(wp_remote_retrieve_body($response), true);
+    
     if (empty($episodes)) {
         return '<em>Keine Episoden gefunden</em>';
     }
-    $last_episode = $episodes[0];
-    $episodeTitle = "S{$last_episode['episode']['season']}E{$last_episode['episode']['number']}: {$last_episode['episode']['title']}";
-    $link = "https://trakt.tv/shows/{$last_episode['show']['ids']['slug']}/seasons/{$last_episode['episode']['season']}/episodes/{$last_episode['episode']['number']}";
-    return "<a class='bubble' href='{$link}' target='_blank'>{$episodeTitle}</a>";
+    
+    // Erstelle Ausgaben für die letzten Episoden
+    $episode_items = [];
+    foreach ($episodes as $episode) {
+        $title = $episode['show']['title'];
+        $season = $episode['episode']['season'];
+        $episodeNumber = $episode['episode']['number'];
+        $episodeTitle = $episode['episode']['title'];
+        $link = "https://trakt.tv/shows/" . $episode['show']['ids']['slug'] . "/seasons/{$season}/episodes/{$episodeNumber}";
+        $episode_items[] = "<a class='bubble' href='{$link}' target='_blank'>S{$season}E{$episodeNumber}: {$episodeTitle}</a>";
+    }
+
+    $output = '';
+    if (count($episode_items) > 1) {
+        // Wenn es mehr als eine Episode gibt, füge sie mit Komma und " und " für das letzte Element zusammen
+        $last_episode_item = array_pop($episode_items); // Entferne und speichere das letzte Element
+        $output = implode(', ', $episode_items) . ' und ' . $last_episode_item;
+    } else {
+        // Wenn nur eine Episode vorhanden ist, gib diese direkt zurück
+        $output = $episode_items[0];
+    }
+
+    return $output;
 }
 add_shortcode('nowscr_trakt_last_episode', 'nowscr_trakt_last_episode_shortcode');
+
