@@ -3,7 +3,7 @@
  * Plugin Name:         NowScrobbling
  * Plugin URI:          https://github.com/willrobin/NowScrobbling
  * Description:         NowScrobbling ist ein einfaches WordPress-Plugin, um API-Einstellungen für last.fm und trakt.tv zu verwalten und deren letzte Aktivitäten anzuzeigen.
- * Version:             1.0.5
+ * Version:             1.0.6
  * Requires at least:   
  * Requires PHP:        
  * Author:              Robin Will
@@ -143,7 +143,7 @@ function nowscrobbling_settings_page() {
                 <td><input type="number" name="lovedtracks_count" value="<?php echo esc_attr(get_option('lovedtracks_count', 5)); ?>" /></td>
             </tr>
             <tr valign="top">
-                <th scope="row">Zeitraum</th>
+                <th scope="row">Zeitraum (außer Alben)</th>
                 <td>
                     <select name="time_period">
                         <option value="7day" <?php echo get_option('time_period') == '7day' ? 'selected' : ''; ?>>Letzte 7 Tage</option>
@@ -242,6 +242,8 @@ function nowscrobbling_settings_page() {
             <?php echo nowscr_trakt_history_shortcode(); // Zeigt die letzten Scrobbles von Trakt an. ?>
             <h3>Letzter Film</h3>
             <?php echo nowscr_trakt_last_movie_shortcode(); // Zeigt den letzten Film von Trakt an. ?>
+            <h3>Letzter Film (mit Bewertung)</h3>
+            <?php echo nowscr_trakt_last_movie_with_rating_shortcode(); // Zeigt den letzten Film von Trakt an. ?>
             <h3>Letzter Serie</h3>
             <?php echo nowscr_trakt_last_show_shortcode(); // Zeigt die letzte Serie von Trakt an. ?>
             <h3>Letzte Episode</h3>
@@ -370,9 +372,9 @@ function fetch_lastfm_data($type, $count = null, $period = null) {
 }
 
 // SHORTCODES
-
 // last.fm
 
+// Zeigt den Status der Last.fm Aktivität an
 function nowscr_lastfm_indicator_shortcode() {
     // Abrufen der Cache-Dauer aus den WordPress-Optionen
     $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
@@ -410,43 +412,7 @@ function nowscr_lastfm_indicator_shortcode() {
 }
 add_shortcode('nowscr_lastfm_indicator', 'nowscr_lastfm_indicator_shortcode');
 
-
-/* // Define shortcodes for displaying activities and last activity times
-function nowscr_lastfm_history_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Scrobbles aus dem Transient Cache abzurufen
-    $scrobbles = get_transient('nowscrobbling_lastfm_scrobbles');
-
-    // Wenn die Scrobbles nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($scrobbles === false) {
-        $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
-        // Speichern Sie die Scrobbles für 1 Stunde im Cache
-        set_transient('nowscrobbling_lastfm_scrobbles', $scrobbles, $cache_duration);
-    }
-
-    $output = '<ul class="lastfm-scrobbles">';
-    // Überprüfen Sie, ob $scrobbles ein Array ist
-    if (is_array($scrobbles)) {
-        foreach ($scrobbles as $track) {
-            $artist = esc_html($track->artist->{'#text'});
-            $song = esc_html($track->name);
-            $url = esc_url($track->url);
-            $nowPlaying = '';
-            if (isset($track->{'@attr'}) && $track->{'@attr'}->nowplaying == 'true') {
-                $nowPlaying = '<img src="' . plugins_url('public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-                $output .= "<li class='now-playing'>{$nowPlaying} <a href='{$url}' target='_blank'>{$artist} - {$song}</a></li>";
-            } else {
-                $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$song}</a></li>";
-            }
-        }
-    }
-    $output .= '</ul>';
-    return $output;
-}
-add_shortcode('nowscr_lastfm_history', 'nowscr_lastfm_history_shortcode'); */
-
+// Zeigt die letzten Scrobbles von Last.fm an
 function nowscr_lastfm_history_shortcode() {
     // Abrufen der Cache-Dauer aus den WordPress-Optionen
     // $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
@@ -472,7 +438,7 @@ function nowscr_lastfm_history_shortcode() {
                 $song = esc_html($track->name);
                 $url = esc_url($track->url);
                 $nowPlaying = '<img src="' . plugins_url('public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-                $output = "<strong>Jetzt</strong> läuft <span class='bubble'>{$nowPlaying}<a href='{$url}' target='_blank'>{$artist} - {$song}</a></span>";
+                $output = "<span class='bubble'>{$nowPlaying}<a href='{$url}' target='_blank'>{$artist} - {$song}</a></span>";
                 break;
             } else {
                 $lastPlayedTrack = $track;
@@ -484,44 +450,12 @@ function nowscr_lastfm_history_shortcode() {
         $artist = esc_html($lastPlayedTrack->artist->{'#text'});
         $song = esc_html($lastPlayedTrack->name);
         $url = esc_url($lastPlayedTrack->url);
-        $output = "Zuletzt lief <a class='bubble' href='{$url}' target='_blank'>{$artist} - {$song}</a>";
+        $output = "<a class='bubble' href='{$url}' target='_blank'>{$artist} - {$song}</a>";
     }
 
     return $output;
 }
 add_shortcode('nowscr_lastfm_history', 'nowscr_lastfm_history_shortcode');
-
-/* function nowscr_lastfm_top_artists_shortcode() {
-    $count = get_option('top_artists_count', 5); // Default 5 artists
-    $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Top-Künstler aus dem Transient Cache abzurufen
-    $data = get_transient('lastfm_top_artists');
-
-    // Wenn die Top-Künstler nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($data === false) {
-        $data = fetch_lastfm_data('topartists', $count, $period);
-        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
-        if ($data === null) {
-            return '<em>Komisch, es wurden keine Künstler gefunden</em>';
-        }
-        // Speichern Sie die Top-Künstler für 1 Stunde im Cache
-        set_transient('lastfm_top_artists', $data, $cache_duration);
-    }
-
-    $output = '<ul class="top-artists">'; // Add the CSS class here
-    foreach ($data['topartists']['artist'] as $artist) {
-        $name = esc_html($artist['name']);
-        $url = esc_url($artist['url']);
-
-        $output .= "<li><a href='{$url}' target='_blank'>{$name}</a></li>";
-    }
-    $output .= '</ul>';
-
-    return $output;
-}
-add_shortcode('nowscr_lastfm_top_artists', 'nowscr_lastfm_top_artists_shortcode'); */
 
 function nowscr_lastfm_top_artists_shortcode() {
     $count = get_option('top_artists_count', 5); // Default 5 artists
@@ -562,8 +496,8 @@ function nowscr_lastfm_top_artists_shortcode() {
 add_shortcode('nowscr_lastfm_top_artists', 'nowscr_lastfm_top_artists_shortcode');
 
 function nowscr_lastfm_top_albums_shortcode() {
-    $count = get_option('top_albums_count', 5); // Default 5 albums
-    $period = get_option('time_period', '7day'); // Default last 7 days
+    $count = get_option('top_albums_count', 1); // Default 1 albums
+    $period = get_option('6month', '6month'); // Default last 6 months
     $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
 
     // Versuchen Sie, die Top-Alben aus dem Transient Cache abzurufen
@@ -580,52 +514,25 @@ function nowscr_lastfm_top_albums_shortcode() {
         set_transient('lastfm_top_albums', $data, $cache_duration);
     }
 
-    $output = '<ul class="top-albums">'; // Add the CSS class here
+    $albums = array();
     foreach ($data['topalbums']['album'] as $album) {
         $artist = esc_html($album['artist']['name']);
         $title = esc_html($album['name']);
         $url = esc_url($album['url']);
 
-        $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$title}</a></li>";
+        $albums[] = "<a class='bubble' href='{$url}' target='_blank'>{$artist} - {$title}</a>";
     }
-    $output .= '</ul>';
+
+    if (count($albums) > 1) {
+        $last_album = array_pop($albums);
+        $output = implode(' ', $albums) . ' und ' . $last_album;
+    } else {
+        $output = $albums[0];
+    }
 
     return $output;
 }
 add_shortcode('nowscr_lastfm_top_albums', 'nowscr_lastfm_top_albums_shortcode');
-
-/* function nowscr_lastfm_top_tracks_shortcode() {
-    $count = get_option('top_tracks_count', 5); // Default 5 tracks
-    $period = get_option('time_period', '7day'); // Default last 7 days
-    $cache_duration = get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS;
-
-    // Versuchen Sie, die Top-Tracks aus dem Transient Cache abzurufen
-    $data = get_transient('lastfm_top_tracks');
-
-    // Wenn die Top-Tracks nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($data === false) {
-        $data = fetch_lastfm_data('toptracks', $count, $period);
-        // Wenn ein Fehler auftritt, geben Sie die Fehlermeldung zurück
-        if ($data === null) {
-            return '<em>Komisch, es wurden keine Titel gefunden</em>';
-        }
-        // Speichern Sie die Top-Tracks für 1 Stunde im Cache
-        set_transient('lastfm_top_tracks', $data, $cache_duration);
-    }
-
-    $output = '<ul class="top-tracks">'; // Add the CSS class here
-    foreach ($data['toptracks']['track'] as $track) {
-        $artist = esc_html($track['artist']['name']);
-        $title = esc_html($track['name']);
-        $url = esc_url($track['url']);
-
-        $output .= "<li><a href='{$url}' target='_blank'>{$artist} - {$title}</a></li>";
-    }
-    $output .= '</ul>';
-
-    return $output;
-}
-add_shortcode('nowscr_lastfm_top_tracks', 'nowscr_lastfm_top_tracks_shortcode'); */
 
 function nowscr_lastfm_top_tracks_shortcode() {
     $count = get_option('top_tracks_count', 5); // Default 5 tracks
@@ -744,24 +651,40 @@ function nowscrobbling_fetch_trakt_activities() {
 }
 
 function nowscr_trakt_indicator_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+    $client_id = get_option('trakt_client_id');
+    $user = get_option('trakt_user');
+    $watching_url = "https://api.trakt.tv/users/{$user}/watching";
 
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
+    $response = wp_remote_get($watching_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
 
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für 1 Stunde im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    if (is_wp_error($response)) {
+        return '<em>Fehler beim Überprüfen der aktuellen Wiedergabe auf trakt.tv</em>';
     }
 
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+
+    // Überprüfen, ob Daten vorhanden sind, was bedeutet, dass eine Wiedergabe läuft
+    if (!empty($data)) {
+        return "<strong>Scrobbelt gerade</strong>";
+    }
+
+    // Keine laufende Wiedergabe, zeigen Sie das letzte Aktivitätsdatum an
+    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+    $activities = get_transient('nowscrobbling_trakt_activities');
+    if ($activities === false) {
+        $activities = nowscrobbling_fetch_trakt_activities();
+        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    }
     if (empty($activities)) {
         return "<em>Komisch, es wurden keine kürzlichen Scrobbles gefunden</em>";
     }
-
-    // Angenommen, die erste Aktivität im Array ist die letzte Aktivität
     $lastActivity = reset($activities);
     $lastActivityDate = $lastActivity['watched_at'];
     $date = new DateTime($lastActivityDate);
@@ -772,103 +695,192 @@ function nowscr_trakt_indicator_shortcode() {
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
 
 function nowscr_trakt_history_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+    $client_id = get_option('trakt_client_id');
+    $user = get_option('trakt_user');
+    $watching_url = "https://api.trakt.tv/users/{$user}/watching";
 
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
+    $response = wp_remote_get($watching_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
 
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für 1 Stunde im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) == 200) {
+        $watching = json_decode(wp_remote_retrieve_body($response), true);
+
+        // Überprüfen, ob eine aktuelle Wiedergabe vorhanden ist
+        if (!empty($watching)) {
+            // Wiedergabe ist aktiv, Daten für die aktuelle Wiedergabe ausgeben
+            $type = $watching['type'];
+            $title = $type == 'movie' ? "{$watching['movie']['title']} ({$watching['movie']['year']})" : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
+            $link = $type == 'movie' ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
+            $nowPlaying = '<img src="' . plugins_url('public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
+            return "<span class='bubble'>{$nowPlaying}<a href='{$link}' target='_blank'>{$title}</a></span>";
+        }
     }
 
-    $output = '<ul class="trakt-tv-activities">';
-    foreach ($activities as $activity) {
-        $type = $activity['type'];
-        $title = $type == 'movie' ? "{$activity['movie']['title']} ({$activity['movie']['year']})" : "{$activity['show']['title']} - S{$activity['episode']['season']}E{$activity['episode']['number']} {$activity['episode']['title']}";
-        $link = $type == 'movie' ? "https://trakt.tv/movies/{$activity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$activity['show']['ids']['slug']}/seasons/{$activity['episode']['season']}/episodes/{$activity['episode']['number']}";
-        $output .= "<li><a href='{$link}' target='_blank'>{$title}</a></li>";
+    // Keine laufende Wiedergabe, greife auf die letzte Aktivität zurück
+    $activities = nowscrobbling_fetch_trakt_activities();
+
+    if (empty($activities)) {
+        return "<em>Keine kürzlichen Aktivitäten gefunden</em>";
     }
-    $output .= '</ul>';
-    return $output;
+
+    // Letzte Aktivität ausgeben
+    $lastActivity = reset($activities);
+    $type = $lastActivity['type'];
+    $title = $type == 'movie' ? "{$lastActivity['movie']['title']} ({$lastActivity['movie']['year']})" : "{$lastActivity['show']['title']} - S{$lastActivity['episode']['season']}E{$lastActivity['episode']['number']}: {$lastActivity['episode']['title']}";
+    $link = $type == 'movie' ? "https://trakt.tv/movies/{$lastActivity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$lastActivity['show']['ids']['slug']}/seasons/{$lastActivity['episode']['season']}/episodes/{$lastActivity['episode']['number']}";
+
+    return "<span class='bubble'><a href='{$link}' target='_blank'>{$title}</a></span>";
 }
 add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
 
+
 function nowscr_trakt_last_movie_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+    $client_id = get_option('trakt_client_id');
+    $user = get_option('trakt_user');
+    $watched_movies_url = "https://api.trakt.tv/users/{$user}/history/movies";
 
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
+    $response = wp_remote_get($watched_movies_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
 
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für die festgelegte Cache-Dauer im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    if (is_wp_error($response)) {
+        return '<em>Fehler beim Abrufen der letzten Filme von trakt.tv</em>';
     }
 
-    // Durchlaufen Sie die Aktivitäten rückwärts, um den letzten Film zu finden
-    for ($i = count($activities) - 1; $i >= 0; $i--) {
-        if ($activities[$i]['type'] == 'movie') {
-            $title = "{$activities[$i]['movie']['title']} ({$activities[$i]['movie']['year']})";
-            $link = "https://trakt.tv/movies/{$activities[$i]['movie']['ids']['slug']}";
-            return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
-        }
+    $movies = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (empty($movies)) {
+        return '<em>Keine Filme gefunden</em>';
     }
-    return '<em>Kein letzter Film gefunden</em>';
+
+    $last_movie = $movies[0];
+    $title = $last_movie['movie']['title'] . ' (' . $last_movie['movie']['year'] . ')';
+    $link = "https://trakt.tv/movies/" . $last_movie['movie']['ids']['slug'];
+
+    return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a>";
 }
 add_shortcode('nowscr_trakt_last_movie', 'nowscr_trakt_last_movie_shortcode');
 
-function nowscr_trakt_last_show_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+function nowscr_trakt_last_movie_with_rating_shortcode() {
+    $client_id = get_option('trakt_client_id');
+    $user = get_option('trakt_user');
+    $watched_movies_url = "https://api.trakt.tv/users/{$user}/history/movies";
+    $ratings_url = "https://api.trakt.tv/users/{$user}/ratings/movies";
 
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
+    // Anfrage für zuletzt angesehene Filme
+    $response_watched = wp_remote_get($watched_movies_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
 
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für die festgelegte Cache-Dauer im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    // Anfrage für Bewertungen
+    $response_ratings = wp_remote_get($ratings_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
+
+    if (is_wp_error($response_watched) || is_wp_error($response_ratings)) {
+        return '<em>Fehler beim Abrufen der Daten von trakt.tv</em>';
     }
 
-    foreach ($activities as $activity) {
-        if ($activity['type'] == 'episode' && isset($activity['show'])) {
-            $showTitle = "{$activity['show']['title']}";
-            $link = "https://trakt.tv/shows/{$activity['show']['ids']['slug']}";
-            return "<a class='bubble' href='{$link}' target='_blank'>{$showTitle}</a>";
+    $movies = json_decode(wp_remote_retrieve_body($response_watched), true);
+    $ratings = json_decode(wp_remote_retrieve_body($response_ratings), true);
+
+    if (empty($movies)) {
+        return '<em>Keine Filme gefunden</em>';
+    }
+
+    $last_movie = $movies[0];
+    $title = $last_movie['movie']['title'] . ' (' . $last_movie['movie']['year'] . ')';
+    $link = "https://trakt.tv/movies/" . $last_movie['movie']['ids']['slug'];
+
+    // Suche nach der Bewertung für den zuletzt angesehenen Film
+    $rating_text = '';
+    foreach ($ratings as $rating) {
+        if ($rating['movie']['ids']['trakt'] == $last_movie['movie']['ids']['trakt']) {
+            $rating_text = " ich habe ihn mit <span class='bubble' style='font-weight: bold;'>" . $rating['rating'] . "/10</span>" . " bewertet.";
+            break;
         }
     }
-    return '<em>Keine letzte Serie gefunden</em>';
+
+    return "<a class='bubble' href='{$link}' target='_blank'>{$title}</a> {$rating_text}";
+}
+add_shortcode('nowscr_trakt_last_movie_with_rating', 'nowscr_trakt_last_movie_with_rating_shortcode');
+
+
+function nowscr_trakt_last_show_shortcode() {
+    $client_id = get_option('trakt_client_id');
+    $user = get_option('trakt_user');
+    $watched_shows_url = "https://api.trakt.tv/users/{$user}/history/shows";
+
+    $response = wp_remote_get($watched_shows_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
+
+    if (is_wp_error($response)) {
+        return '<em>Fehler beim Abrufen der letzten Serien von trakt.tv</em>';
+    }
+
+    $shows = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (empty($shows)) {
+        return '<em>Keine Serien gefunden</em>';
+    }
+
+    $last_show = $shows[0];
+    $showTitle = "{$last_show['show']['title']} ({$last_show['show']['year']})";
+    $link = "https://trakt.tv/shows/{$last_show['show']['ids']['slug']}";
+
+    return "<a class='bubble' href='{$link}' target='_blank'>{$showTitle}</a>";
 }
 add_shortcode('nowscr_trakt_last_show', 'nowscr_trakt_last_show_shortcode');
 
 function nowscr_trakt_last_episode_shortcode() {
-    // Abrufen der Cache-Dauer aus den WordPress-Optionen
-    $cache_duration = get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS;
+    $client_id = get_option('trakt_client_id');
+    $user = get_option('trakt_user');
+    $watched_episodes_url = "https://api.trakt.tv/users/{$user}/history/episodes";
 
-    // Versuchen Sie, die Aktivitäten aus dem Transient Cache abzurufen
-    $activities = get_transient('nowscrobbling_trakt_activities');
+    $response = wp_remote_get($watched_episodes_url, [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'trakt-api-version' => '2',
+            'trakt-api-key' => $client_id
+        ]
+    ]);
 
-    // Wenn die Aktivitäten nicht im Cache sind, rufen Sie sie ab und speichern Sie sie im Cache
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        // Speichern Sie die Aktivitäten für die festgelegte Cache-Dauer im Cache
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    if (is_wp_error($response)) {
+        return '<em>Fehler beim Abrufen der letzten Episoden von trakt.tv</em>';
     }
 
-    foreach ($activities as $activity) {
-        if ($activity['type'] == 'episode') {
-            $episodeTitle = "S{$activity['episode']['season']}E{$activity['episode']['number']} {$activity['episode']['title']}";
-            $link = "https://trakt.tv/shows/{$activity['show']['ids']['slug']}/seasons/{$activity['episode']['season']}/episodes/{$activity['episode']['number']}";
-            return "<a class='bubble' href='{$link}' target='_blank'>{$episodeTitle}</a>";
-        }
+    $episodes = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (empty($episodes)) {
+        return '<em>Keine Episoden gefunden</em>';
     }
-    return '<em>Keine letzte Folge gefunden</em>';
+
+    $last_episode = $episodes[0];
+    $episodeTitle = "S{$last_episode['episode']['season']}E{$last_episode['episode']['number']}: {$last_episode['episode']['title']}";
+    $link = "https://trakt.tv/shows/{$last_episode['show']['ids']['slug']}/seasons/{$last_episode['episode']['season']}/episodes/{$last_episode['episode']['number']}";
+
+    return "<a class='bubble' href='{$link}' target='_blank'>{$episodeTitle}</a>";
 }
 add_shortcode('nowscr_trakt_last_episode', 'nowscr_trakt_last_episode_shortcode');
