@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Version: 1.2.1
+ */
+
 // Fetch or Set Transient
 function nowscrobbling_get_or_set_transient($transient_key, $callback, $expiration = 3600)
 {
@@ -133,22 +137,6 @@ function nowscr_lastfm_lovedtracks_shortcode()
     });
 }
 add_shortcode('nowscr_lastfm_lovedtracks', 'nowscr_lastfm_lovedtracks_shortcode');
-
-// Last.fm Top Tags Shortcode
-function nowscr_lastfm_top_tags_shortcode($atts)
-{
-    $atts = shortcode_atts(['period' => '7day'], $atts);
-    $data = nowscrobbling_fetch_lastfm_top_data('toptags', get_option('top_tags_count', 5), $atts['period']);
-
-    if (!$data || empty($data['toptags']['tag'])) {
-        return "<em>Keine Top-Tags gefunden.</em>";
-    }
-
-    return nowscrobbling_generate_shortcode_output($data['toptags']['tag'], function ($tag) {
-        return "<a class='bubble' href='" . esc_url($tag['url']) . "'>" . esc_html($tag['name']) . "</a>";
-    });
-}
-add_shortcode('nowscr_lastfm_top_tags', 'nowscr_lastfm_top_tags_shortcode');
 
 // Trakt Indicator Shortcode
 function nowscr_trakt_indicator_shortcode()

@@ -4,7 +4,7 @@
  * Plugin Name:         NowScrobbling
  * Plugin URI:          https://github.com/willrobin/NowScrobbling
  * Description:         NowScrobbling is a WordPress plugin designed to manage API settings and display recent activities for last.fm and trakt.tv on your site. It enables users to show their latest scrobbles through shortcodes.
- * Version:             1.2.0
+ * Version:             1.2.1
  * Requires at least:   5.0
  * Requires PHP:        7.0
  * Author:              Robin Will
@@ -16,6 +16,7 @@
  * GitHub Branch:       master
  */
 
+ // Ensure the script is not accessed directly
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
@@ -26,7 +27,7 @@ function nowscrobbling_enqueue_styles() {
         'nowscrobbling-public', // Handle for the stylesheet
         plugin_dir_url(__FILE__) . 'public/css/nowscrobbling-public.css', // URL to the stylesheet
         [], // Dependencies (if any)
-        '1.2.0' // Version number
+        '1.2.1' // Version number
     );
 }
 add_action('wp_enqueue_scripts', 'nowscrobbling_enqueue_styles');

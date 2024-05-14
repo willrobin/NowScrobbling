@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Version:             1.2.1
+*/
+
 // Admin Menu and Settings Registration
 add_action('admin_menu', 'nowscrobbling_admin_menu');
 add_action('admin_init', 'nowscrobbling_register_settings');
@@ -13,7 +17,7 @@ function nowscrobbling_register_settings()
 {
     $settings = [
         'lastfm_api_key', 'lastfm_user', 'trakt_client_id', 'trakt_user',
-        'top_tracks_count', 'top_artists_count', 'top_albums_count', 'lovedtracks_count', 'top_tags_count',
+        'top_tracks_count', 'top_artists_count', 'top_albums_count', 'lovedtracks_count',
         'last_movies_count', 'last_shows_count', 'last_episodes_count',
         'cache_duration', 'lastfm_cache_duration', 'trakt_cache_duration',
         'lastfm_activity_limit', 'trakt_activity_limit'
@@ -55,7 +59,6 @@ add_action('admin_init', function () {
         ['top_artists_count', 'Anzahl der Top-Künstler', 'number', ['min' => 1, 'default' => 5]],
         ['top_albums_count', 'Anzahl der Top-Alben', 'number', ['min' => 1, 'default' => 5]],
         ['lovedtracks_count', 'Anzahl der Lieblingslieder', 'number', ['min' => 1, 'default' => 5]],
-        ['top_tags_count', 'Anzahl der Top-Tags', 'number', ['min' => 1, 'default' => 5]],
         ['last_movies_count', 'Anzahl der letzten Filme', 'number', ['min' => 1, 'default' => 3]],
         ['last_shows_count', 'Anzahl der letzten Serien', 'number', ['min' => 1, 'default' => 3]],
         ['last_episodes_count', 'Anzahl der letzten Episoden', 'number', ['min' => 1, 'default' => 3]],
@@ -77,13 +80,32 @@ add_action('admin_init', function () {
     }
 });
 
+// Function to clear all relevant transients
+function nowscrobbling_clear_all_caches()
+{
+    $transients = [
+        'my_lastfm_scrobbles',
+        'lastfm_top_artists',
+        'lastfm_top_albums',
+        'lastfm_top_tracks',
+        'lastfm_lovedtracks',
+        'my_trakt_tv_activities',
+        'my_trakt_tv_movies',
+        'my_trakt_tv_shows',
+        'my_trakt_tv_episodes'
+    ];
+
+    foreach ($transients as $transient) {
+        delete_transient($transient);
+    }
+}
+
 // Settings Page Content
 function nowscrobbling_settings_page()
 {
-    if (isset($_POST['clear_cache'])) {
-        delete_transient('my_lastfm_scrobbles');
-        delete_transient('my_trakt_tv_activities');
-        echo '<div class="updated"><p>Cache geleert.</p></div>';
+    if (isset($_POST['clear_cache']) && check_admin_referer('nowscrobbling_clear_cache', 'nowscrobbling_nonce')) {
+        nowscrobbling_clear_all_caches();
+        echo '<div class="updated"><p>Alle Caches wurden erfolgreich geleert.</p></div>';
     }
     ?>
     <div class="wrap">
@@ -105,11 +127,11 @@ function nowscrobbling_settings_page()
         <ul>
             <li><code>[nowscr_lastfm_indicator]</code> - Zeigt den aktuellen Status der Last.fm Aktivität an.</li>
             <li><code>[nowscr_lastfm_history]</code> - Zeigt die letzten Scrobbles von Last.fm an.</li>
-            <li><code>[nowscr_lastfm_top_artists period="7day"]</code> - Zeigt die letzten Top-Künstler von Last.fm im gewählten Zeitraum an. Verfügbare Werte für <code>period</code>: <code>7day</code>, <code>1month</code>, <code>3month</code>, <code>6month</code>, <code>12month</code>, <code>overall</code>.</li>
-            <li><code>[nowscr_lastfm_top_albums period="7day"]</code> - Zeigt die letzten Top-Alben von Last.fm im gewählten Zeitraum an. Verfügbare Werte für <code>period</code>: <code>7day</code>, <code>1month</code>, <code>3month</code>, <code>6month</code>, <code>12month</code>, <code>overall</code>.</li>
-            <li><code>[nowscr_lastfm_top_tracks period="7day"]</code> - Zeigt die letzten Top-Titel von Last.fm im gewählten Zeitraum an. Verfügbare Werte für <code>period</code>: <code>7day</code>, <code>1month</code>, <code>3month</code>, <code>6month</code>, <code>12month</code>, <code>overall</code>.</li>
+            <li><code>[nowscr_lastfm_top_artists period="7day"]</code> - Zeigt die letzten Top-Künstler von Last.fm im gewählten Zeitraum an.</li>
+            <li><code>[nowscr_lastfm_top_albums period="7day"]</code> - Zeigt die letzten Top-Alben von Last.fm im gewählten Zeitraum an.</li>
+            <li><code>[nowscr_lastfm_top_tracks period="7day"]</code> - Zeigt die letzten Top-Titel von Last.fm im gewählten Zeitraum an.</li>
             <li><code>[nowscr_lastfm_lovedtracks]</code> - Zeigt die letzten Lieblingslieder von Last.fm an.</li>
-            <li><code>[nowscr_lastfm_top_tags period="7day"]</code> - Zeigt die letzten Top-Tags von Last.fm im gewählten Zeitraum an. Verfügbare Werte für <code>period</code>: <code>7day</code>, <code>1month</code>, <code>3month</code>, <code>6month</code>, <code>12month</code>, <code>overall</code>.</li>
+            <li>Verfügbare Werte für <code>period</code>: <code>7day</code>, <code>1month</code>, <code>3month</code>, <code>6month</code>, <code>12month</code>, <code>overall</code>.</li>
         </ul>
         <h3>Trakt</h3>
         <ul>
@@ -135,8 +157,6 @@ function nowscrobbling_settings_page()
             <?php echo do_shortcode('[nowscr_lastfm_top_tracks period="7day"]'); ?>
             <h4>Letzte Lieblingslieder</h4>
             <?php echo do_shortcode('[nowscr_lastfm_lovedtracks]'); ?>
-            <h4>Letzte Top-Tags</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_top_tags period="7day"]'); ?>
             <h3>Trakt</h3>
             <h4>Status (Indicator)</h4>
             <?php echo do_shortcode('[nowscr_trakt_indicator]'); ?>

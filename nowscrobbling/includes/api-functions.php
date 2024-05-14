@@ -1,26 +1,71 @@
 <?php
 
-// Fetch API Data
+/**
+ * Version:             1.2.1
+*/
+
+// Define constants for API URLs
+define('LASTFM_API_URL', 'http://ws.audioscrobbler.com/2.0/');
+define('TRAKT_API_URL', 'https://api.trakt.tv/');
+
+// Define constants for options
+define('LASTFM_API_KEY', get_option('lastfm_api_key'));
+define('LASTFM_USER', get_option('lastfm_user'));
+define('TRAKT_CLIENT_ID', get_option('trakt_client_id'));
+define('TRAKT_USER', get_option('trakt_user'));
+
+/**
+ * Handle API request errors
+ *
+ * @param WP_Error $error The error object.
+ * @param string $message The custom error message.
+ * @return null Always returns null.
+ */
+function nowscrobbling_handle_api_error($error, $message)
+{
+    error_log("$message: " . $error->get_error_message());
+    return null;
+}
+
+/**
+ * Fetch API Data
+ *
+ * @param string $url The API endpoint URL.
+ * @param array $headers The headers to send with the request.
+ * @return array|null The response data or null if an error occurred.
+ */
 function nowscrobbling_fetch_api_data($url, $headers = [])
 {
     $response = wp_remote_get($url, ['headers' => $headers]);
-    if (is_wp_error($response) || 200 != wp_remote_retrieve_response_code($response)) {
+    if (is_wp_error($response)) {
+        return nowscrobbling_handle_api_error($response, 'API request error');
+    }
+    if (200 != wp_remote_retrieve_response_code($response)) {
+        error_log('API request error: Invalid response code ' . wp_remote_retrieve_response_code($response));
         return null;
     }
     return json_decode(wp_remote_retrieve_body($response), true);
 }
 
-// Last.fm Data Fetch
+/**
+ * Fetch Last.fm Data
+ *
+ * @param string $method The API method to call.
+ * @param array $params The query parameters for the API request.
+ * @return array|null The response data or null if an error occurred.
+ */
 function nowscrobbling_fetch_lastfm_data($method, $params = [])
 {
-    $api_key = get_option('lastfm_api_key');
-    $user = get_option('lastfm_user');
-    $params = array_merge(['api_key' => $api_key, 'user' => $user, 'format' => 'json'], $params);
-    $url = "http://ws.audioscrobbler.com/2.0/?method=user.$method&" . http_build_query($params);
+    $params = array_merge(['api_key' => LASTFM_API_KEY, 'user' => LASTFM_USER, 'format' => 'json'], $params);
+    $url = LASTFM_API_URL . "?method=user.$method&" . http_build_query($params);
     return nowscrobbling_fetch_api_data($url);
 }
 
-// Fetch and Display Last.fm Scrobbles
+/**
+ * Fetch and Display Last.fm Scrobbles
+ *
+ * @return array The scrobbles data or error message.
+ */
 function nowscrobbling_fetch_lastfm_scrobbles()
 {
     return nowscrobbling_get_or_set_transient('my_lastfm_scrobbles', function () {
@@ -42,7 +87,14 @@ function nowscrobbling_fetch_lastfm_scrobbles()
     }, get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS);
 }
 
-// Fetch Last.fm Top Data
+/**
+ * Fetch Last.fm Top Data
+ *
+ * @param string $type The type of data to fetch (e.g., topartists, topalbums).
+ * @param int $count The number of items to fetch.
+ * @param string $period The period to fetch data for.
+ * @return array|null The response data or null if an error occurred.
+ */
 function nowscrobbling_fetch_lastfm_top_data($type, $count, $period)
 {
     return nowscrobbling_fetch_lastfm_data("get{$type}", [
@@ -51,26 +103,39 @@ function nowscrobbling_fetch_lastfm_top_data($type, $count, $period)
     ]);
 }
 
-// Trakt Data Fetch
+/**
+ * Fetch Trakt Data
+ *
+ * @param string $path The API endpoint path.
+ * @param array $params The query parameters for the API request.
+ * @return array|null The response data or null if an error occurred.
+ */
 function nowscrobbling_fetch_trakt_data($path, $params = [])
 {
-    $client_id = get_option('trakt_client_id');
     $headers = [
         'Content-Type' => 'application/json',
         'trakt-api-version' => '2',
-        'trakt-api-key' => $client_id,
+        'trakt-api-key' => TRAKT_CLIENT_ID,
     ];
-    $url = "https://api.trakt.tv/$path?" . http_build_query($params);
+    $url = TRAKT_API_URL . "$path?" . http_build_query($params);
     return nowscrobbling_fetch_api_data($url, $headers);
 }
 
-// Fetch and Display Trakt Activities
+/**
+ * Fetch and Display Trakt Activities
+ *
+ * @return array The activities data or error message.
+ */
 function nowscrobbling_fetch_trakt_activities()
 {
     return nowscrobbling_get_or_set_transient('my_trakt_tv_activities', function () {
-        return nowscrobbling_fetch_trakt_data('users/' . get_option('trakt_user') . '/history', [
+        $data = nowscrobbling_fetch_trakt_data('users/' . TRAKT_USER . '/history', [
             'limit' => get_option('trakt_activity_limit', 25)
         ]);
+        if (!$data || isset($data['error'])) {
+            return ['error' => 'Fehler beim Abrufen der Trakt-Daten'];
+        }
+        return $data;
     }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
 }
 
