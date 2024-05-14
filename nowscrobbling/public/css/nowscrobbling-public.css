@@ -1,0 +1,35 @@
+.nowscrobbling {
+    background-color: rgba(38, 144, 255, 0.1);
+    border-radius: 5px;
+    padding: 0;
+    margin-bottom: 0px;
+    display: block;
+}
+
+.nowscrobbling img {
+    vertical-align: middle;
+    margin-left: 10px;
+    margin-right: 5px;
+    margin-bottom: 0 !important;
+}
+
+.bubble {
+    background-color: rgba(38, 144, 255, 0.033);
+    border: 1px solid rgba(38, 144, 255, 0.066);
+    text-decoration: none;
+    display: inline-block;
+    max-width: fit-content;
+    padding: 0px 4px 0px 4px;
+    line-height: 1.75;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.bubble img[src*="public/images/nowplaying.gif"] {
+    transform: scale(0.8);
+    vertical-align: middle;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-bottom: 0 !important;
+}
