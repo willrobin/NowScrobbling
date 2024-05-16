@@ -139,40 +139,63 @@ function nowscr_lastfm_lovedtracks_shortcode()
 add_shortcode('nowscr_lastfm_lovedtracks', 'nowscr_lastfm_lovedtracks_shortcode');
 
 // Trakt Indicator Shortcode
-function nowscr_trakt_indicator_shortcode()
-{
-    $activities = nowscrobbling_fetch_trakt_activities();
-    if (!$activities) {
-        return "<em>Keine Aktivitäten gefunden.</em>";
+function nowscr_trakt_indicator_shortcode() {
+    // Check currently watching item
+    $watching = nowscrobbling_fetch_trakt_watching();
+
+    if (!empty($watching)) {
+        $type = $watching['type'];
+        $title = $type == 'movie' ? "{$watching['movie']['title']} ({$watching['movie']['year']})" : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
+        $link = $type == 'movie' ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
+        return "<strong>Scrobbelt gerade</strong>";
     }
 
+    // No currently watching item, show last activity
+    $cache_duration = get_option('trakt_cache_duration', 1) * MINUTE_IN_SECONDS;
+    $activities = get_transient('nowscrobbling_trakt_activities');
+    if ($activities === false) {
+        $activities = nowscrobbling_fetch_trakt_activities();
+        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
+    }
+    if (empty($activities)) {
+        return "<em>Keine kürzlichen Aktivitäten gefunden</em>";
+    }
     $lastActivity = reset($activities);
-    $watchedAt = strtotime($lastActivity['watched_at']);
-    $dateTime = new DateTime("@$watchedAt");
-    $dateTime->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
-
-    return 'Zuletzt gesehen: ' . $dateTime->format(get_option('date_format') . ' ' . get_option('time_format'));
+    $lastActivityDate = $lastActivity['watched_at'];
+    $date = new DateTime($lastActivityDate);
+    $date->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
+    return 'Zuletzt geschaut: ' . $date->format(get_option('date_format') . ' ' . get_option('time_format'));
 }
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
 
 // Trakt History Shortcode
-function nowscr_trakt_history_shortcode()
-{
-    $activities = nowscrobbling_fetch_trakt_activities();
-    if (!$activities) {
-        return "<em>Keine Aktivitäten gefunden.</em>";
+function nowscr_trakt_history_shortcode() {
+    // Check currently watching item
+    $watching = nowscrobbling_fetch_trakt_watching();
+
+    if (!empty($watching)) {
+        $type = $watching['type'];
+        $title = $type == 'movie' ? "{$watching['movie']['title']} ({$watching['movie']['year']})" : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
+        $link = $type == 'movie' ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
+        $nowPlaying = '<img src="' . plugins_url('../public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
+        return "<span class='bubble'>{$nowPlaying}<a href='{$link}' target='_blank'>{$title}</a></span>";
     }
 
-    $output = '';
-    foreach ($activities as $activity) {
-        $type = $activity['type'];
-        $title = $type == 'movie' ? "{$activity['movie']['title']} ({$activity['movie']['year']})" : "{$activity['show']['title']} - S{$activity['episode']['season']}E{$activity['episode']['number']}: {$activity['episode']['title']}";
-        $link = $type == 'movie' ? "https://trakt.tv/movies/{$activity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$activity['show']['ids']['slug']}/seasons/{$activity['episode']['season']}/episodes/{$activity['episode']['number']}";
-        $output .= "<span class='bubble'><a href='{$link}' target='_blank'>{$title}</a></span> ";
+    // No currently watching item, show last activity
+    $activities = nowscrobbling_fetch_trakt_activities();
+    if (empty($activities)) {
+        return "<em>Keine kürzlichen Aktivitäten gefunden</em>";
     }
-    return $output;
+
+    // Letzte Aktivität ausgeben
+    $lastActivity = reset($activities);
+    $type = $lastActivity['type'];
+    $title = $type == 'movie' ? "{$lastActivity['movie']['title']} ({$lastActivity['movie']['year']})" : "{$lastActivity['show']['title']} - S{$lastActivity['episode']['season']}E{$lastActivity['episode']['number']}: {$lastActivity['episode']['title']}";
+    $link = $type == 'movie' ? "https://trakt.tv/movies/{$lastActivity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$lastActivity['show']['ids']['slug']}/seasons/{$lastActivity['episode']['season']}/episodes/{$lastActivity['episode']['number']}";
+    return "<span class='bubble'><a href='{$link}' target='_blank'>{$title}</a></span>";
 }
 add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
+
 
 // Trakt Last Movie Shortcode
 function nowscr_trakt_last_movie_shortcode()
@@ -215,7 +238,7 @@ function nowscr_trakt_last_movie_with_rating_shortcode()
 
     return nowscrobbling_generate_shortcode_output($movies['movies'], function ($movie) use ($ratings) {
         $rating = $ratings[$movie['movie']['ids']['trakt']] ?? '';
-        $rating_text = $rating ? " <span style='font-style: italic; font-weight: bold;'>$rating/10</span>" : '';
+        $rating_text = $rating ? " <span style='font-weight: bold;'>$rating</span>" : '';
         return "<span class='bubble'><a href='https://trakt.tv/movies/{$movie['movie']['ids']['slug']}' target='_blank'>{$movie['movie']['title']} ({$movie['movie']['year']})</a>{$rating_text}</span>";
     });
 }

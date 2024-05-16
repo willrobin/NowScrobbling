@@ -1,5 +1,12 @@
 # Changelog
 
+# Changelog
+
+## [1.2.1] - 2024-05-16
+
+### Fixed
+- Fixed an issue where the currently playing item was not being displayed in the `nowscr_trakt_indicator` and `nowscr_trakt_history` shortcodes.
+
 ## [1.2.0] - 2024-05-14
 ### Added
 - The plugin has been restructured to improve maintainability and readability. The code is now split across multiple files:

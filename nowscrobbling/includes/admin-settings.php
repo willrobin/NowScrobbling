@@ -47,7 +47,7 @@ function nowscrobbling_setting_callback($setting, $type = 'text', $options = [])
 // Add settings fields
 add_action('admin_init', function () {
     add_settings_section('nowscrobbling_section', 'NowScrobbling Einstellungen', function () {
-        echo '<p>API-Schlüssel und Benutzernamen für Last.fm und Trakt.tv sowie weitere Einstellungen konfigurieren.</p>';
+        echo '<p>API-Schlüssel und Benutzernamen für Last.fm und Trakt sowie weitere Einstellungen konfigurieren.</p>';
     }, 'nowscrobbling');
 
     $fields = [
@@ -66,7 +66,7 @@ add_action('admin_init', function () {
         ['lastfm_cache_duration', 'Last.fm Cache-Dauer (Minuten)', 'number', ['min' => 1, 'default' => 60]],
         ['trakt_cache_duration', 'Trakt Cache-Dauer (Minuten)', 'number', ['min' => 1, 'default' => 60]],
         ['lastfm_activity_limit', 'Anzahl der last.fm Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
-        ['trakt_activity_limit', 'Anzahl der trakt.tv Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
+        ['trakt_activity_limit', 'Anzahl der Trakt Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
     ];
 
     foreach ($fields as $field) {

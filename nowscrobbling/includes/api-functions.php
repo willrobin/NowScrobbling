@@ -139,4 +139,20 @@ function nowscrobbling_fetch_trakt_activities()
     }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
 }
 
+/**
+ * Fetch Trakt Watching Data
+ *
+ * @return array|null The response data or null if an error occurred.
+ */
+function nowscrobbling_fetch_trakt_watching()
+{
+    $headers = [
+        'Content-Type' => 'application/json',
+        'trakt-api-version' => '2',
+        'trakt-api-key' => TRAKT_CLIENT_ID,
+    ];
+    $url = TRAKT_API_URL . "/users/" . TRAKT_USER . "/watching";
+    return nowscrobbling_fetch_api_data($url, $headers);
+}
+
 ?>
