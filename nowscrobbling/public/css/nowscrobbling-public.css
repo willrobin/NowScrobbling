@@ -1,5 +1,5 @@
 /**
- * Version:             1.2.1
+ * Version:             1.2.2
 */
 
 .nowscrobbling {
@@ -18,16 +18,30 @@
 }
 
 .bubble {
-    background-color: rgba(38, 144, 255, 0.033);
-    border: 1px solid rgba(38, 144, 255, 0.066);
+    background-color: rgba(38, 144, 255, 0.01);
+    border: 1px solid rgba(38, 144, 255, 0.25);
     text-decoration: none;
-    display: inline-block;
+    /* display: inline-block; */
     max-width: fit-content;
-    padding: 0px 4px 0px 4px;
+    padding: 1px 4px 1px 4px;
     line-height: 1.75;
     border-radius: 5px;
     font-size: 0.7rem;
-    white-space: nowrap;
+    /* white-space: nowrap; */
+}
+
+.bubble a {
+    text-decoration-color: rgba(26, 26, 26, 0.2);
+    color: #1a1a1a;
+    transition: text-decoration-color 0.3s;
+}
+
+.bubble a:hover {
+    text-decoration-color: rgba(38, 144, 255, 0.5);
+    border-color: rgba(38, 144, 255, 0.75);
+    border-radius: 5px;
+    color: #2690ff;
+    transition: text-decoration-color 0.3s;
 }
 
 .bubble img[src*="public/images/nowplaying.gif"] {

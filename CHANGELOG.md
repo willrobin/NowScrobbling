@@ -1,6 +1,26 @@
 # Changelog
 
-# Changelog
+## [1.2.2] - 2024-05-17
+
+### Added
+- Added detailed title attributes for better user experience in Last.fm and Trakt shortcodes:
+  - `title` attributes now provide more context about the displayed items.
+- Implemented a `nowscrobbling_format_output` function for better and standardized formatting of Trakt outputs.
+- Included rewatch count and rating information for Trakt history and last movie/show/episode shortcodes.
+- Added `nowscrobbling_fetch_trakt_watched_shows` function to support fetching completed shows from Trakt.
+
+### Changed
+- Enhanced `nowscr_lastfm_history_shortcode` to include `title` attributes in the output links.
+- Refactored Trakt shortcodes to include ratings and rewatch counts:
+  - `nowscr_trakt_history_shortcode`
+  - `nowscr_trakt_last_movie_shortcode`
+  - `nowscr_trakt_last_show_shortcode`
+  - `nowscr_trakt_last_episode_shortcode`
+- Improved data fetching mechanism by using a more structured approach to transient caching.
+- Optimized API data fetching and error handling across all shortcodes.
+
+### Fixed
+- Corrected the image path for the now playing GIF in Last.fm history shortcode.
 
 ## [1.2.1] - 2024-05-16
 

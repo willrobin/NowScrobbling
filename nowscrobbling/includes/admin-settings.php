@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version:             1.2.1
+ * Version:             1.2.2
 */
 
 // Admin Menu and Settings Registration
@@ -164,8 +164,6 @@ function nowscrobbling_settings_page()
             <?php echo do_shortcode('[nowscr_trakt_history]'); ?>
             <h4>Letzte Filme</h4>
             <?php echo do_shortcode('[nowscr_trakt_last_movie]'); ?>
-            <h4>Letzte Filme (mit Bewertung)</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_movie_with_rating]'); ?>
             <h4>Letzte Serien</h4>
             <?php echo do_shortcode('[nowscr_trakt_last_show]'); ?>
             <h4>Letzte Episoden</h4>

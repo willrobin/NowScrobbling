@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Version:             1.2.1
-*/
+ * Version:             1.2.2
+ */
 
 // Define constants for API URLs
 define('LASTFM_API_URL', 'http://ws.audioscrobbler.com/2.0/');
@@ -151,7 +151,23 @@ function nowscrobbling_fetch_trakt_watching()
         'trakt-api-version' => '2',
         'trakt-api-key' => TRAKT_CLIENT_ID,
     ];
-    $url = TRAKT_API_URL . "/users/" . TRAKT_USER . "/watching";
+    $url = TRAKT_API_URL . "users/" . TRAKT_USER . "/watching";
+    return nowscrobbling_fetch_api_data($url, $headers);
+}
+
+/**
+ * Fetch Trakt Watched Shows
+ *
+ * @return array|null The response data or null if an error occurred.
+ */
+function nowscrobbling_fetch_trakt_watched_shows()
+{
+    $headers = [
+        'Content-Type' => 'application/json',
+        'trakt-api-version' => '2',
+        'trakt-api-key' => TRAKT_CLIENT_ID,
+    ];
+    $url = TRAKT_API_URL . "users/" . TRAKT_USER . "/watched/shows";
     return nowscrobbling_fetch_api_data($url, $headers);
 }
 
