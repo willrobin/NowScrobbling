@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version: 1.2.2
+ * Version: 1.2.3
  */
 
 
@@ -303,8 +303,11 @@ function nowscr_trakt_last_movie_shortcode()
         $rewatch_counts[$id] = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/movies/{$id}");
     }
 
+    // Track the position in the history
+    $history_positions = [];
+
     // Format the output
-    return nowscrobbling_generate_shortcode_output($movies['movies'], function ($movie) use ($ratings, $rewatch_counts) {
+    return nowscrobbling_generate_shortcode_output($movies['movies'], function ($movie) use ($ratings, $rewatch_counts, &$history_positions) {
         $id = $movie['movie']['ids']['trakt'];
         $rating = $ratings[$id] ?? '';
         $rating_text = $rating ? "$rating" : '';
@@ -314,12 +317,14 @@ function nowscr_trakt_last_movie_shortcode()
         $url = "https://trakt.tv/movies/{$movie['movie']['ids']['slug']}";
 
         // Adjust the rewatch count based on the position in the history
-        static $rewatch_offset = 0;
-        $rewatch = $rewatch_total - $rewatch_offset;
+        if (!isset($history_positions[$id])) {
+            $history_positions[$id] = 0;
+        }
+        $rewatch = $rewatch_total - $history_positions[$id];
         $rewatch_text = $rewatch > 1 ? $rewatch : '';
 
-        // Increment the offset for the next movie in the history
-        $rewatch_offset++;
+        // Increment the position for the next movie in the history
+        $history_positions[$id]++;
 
         return nowscrobbling_format_output($title, $year, $url, $rating_text, $rewatch_text);
     });
@@ -372,7 +377,10 @@ function nowscr_trakt_last_show_shortcode()
         $rewatch_counts[$id] = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/shows/{$id}");
     }
 
-    return nowscrobbling_generate_shortcode_output($shows['shows'], function ($show) use ($ratings, $completed_shows, $rewatch_counts) {
+    // Track the position in the history
+    $history_positions = [];
+
+    return nowscrobbling_generate_shortcode_output($shows['shows'], function ($show) use ($ratings, $completed_shows, $rewatch_counts, &$history_positions) {
         $id = $show['show']['ids']['trakt'];
         $rating = $ratings[$id] ?? '';
         $rating_text = $rating ? "$rating" : '';
@@ -380,22 +388,21 @@ function nowscr_trakt_last_show_shortcode()
         $rewatch_text = '';
 
         if (isset($completed_shows[$id])) {
-            $rewatch_text = $rewatch_total;
+            if (!isset($history_positions[$id])) {
+                $history_positions[$id] = 0;
+            }
+            $rewatch_adjusted = $rewatch_total - $history_positions[$id];
+            $rewatch_text = $rewatch_adjusted > 1 ? $rewatch_adjusted : '';
+
+            // Increment the position for the next show in the history
+            $history_positions[$id]++;
         }
 
         $title = $show['show']['title'];
         $year = $show['show']['year'];
         $url = "https://trakt.tv/shows/{$show['show']['ids']['slug']}";
 
-        // Adjust the rewatch count based on the position in the history
-        static $rewatch_offset = 0;
-        $rewatch_adjusted = $rewatch_total - $rewatch_offset;
-        $rewatch_text = $rewatch_adjusted > 1 ? $rewatch_adjusted : '';
-
-        // Increment the offset for the next show in the history
-        $rewatch_offset++;
-
-        return nowscrobbling_format_output($title, $year, $url, $rating_text/*  , $rewatch_text */);
+        return nowscrobbling_format_output($title, $year, $url, $rating_text/* , $rewatch_text */);
     });
 }
 add_shortcode('nowscr_trakt_last_show', 'nowscr_trakt_last_show_shortcode');

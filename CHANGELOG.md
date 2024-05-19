@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3] - 2024-05-19
+
+### Fixed
+- **Rewatch Count Tracking:**
+  - Implemented accurate tracking of rewatch counts for `nowscr_trakt_last_movie` shortcode.
+  - Added functionality to track the position in the history to ensure correct rewatch counts per movie.
+
 ## [1.2.2] - 2024-05-17
 
 ### Added
@@ -28,6 +35,7 @@
 - Fixed an issue where the currently playing item was not being displayed in the `nowscr_trakt_indicator` and `nowscr_trakt_history` shortcodes.
 
 ## [1.2.0] - 2024-05-14
+
 ### Added
 - The plugin has been restructured to improve maintainability and readability. The code is now split across multiple files:
   - `nowplaying.php` for the main plugin file.
