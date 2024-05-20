@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version: 1.2.3
+ * Version: 1.2.4
  */
 
 
@@ -166,13 +166,12 @@ function nowscrobbling_format_output($title, $year, $url, $rating = '', $rewatch
         'title' => "$title",
         'year' => $year ? " <span title='Die Veröffentlichung von $title war im Jahr $year' style='font-style: italic; opacity: 0.66;'>($year)</span>" : '',
         'rating' => $rating ? " <span title='Ich bewerte $title mit $rating von 10'><span style='font-size: 1rem;'>★</span>$rating</span>" : '',
-        'rewatch' => $rewatch ? "<span title='Ich schaute $title zum $rewatch. mal' style='font-style: italic; opacity: 0.33;'>#$rewatch</span> " : ''
+        'rewatch' => $rewatch ? "<span title='Ich schaute $title zum $rewatch. mal' style='font-style: italic; opacity: 0.33;'>#$rewatch</span>" : ''
     ];
 
     // Customize the order and separators of elements here
     return "<a class='bubble' href='$url' title='$title auf Trakt' target='_blank'>{$elements['title']}{$elements['year']}{$elements['rewatch']}{$elements['rating']}</a>";
 }
-
 
 
 // Trakt Indicator Shortcode
@@ -206,8 +205,15 @@ function nowscr_trakt_indicator_shortcode() {
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
 
 
-// Trakt History Shortcode with Rating and Rewatch
-function nowscr_trakt_history_shortcode() {
+// Trakt History Shortcode with optional Year, Rating, and Rewatch display
+function nowscr_trakt_history_shortcode($atts) {
+    // Set default attributes and merge with user attributes
+    $atts = shortcode_atts([
+        'show_year' => false,
+        'show_rewatch' => false,
+        'show_rating' => false,
+    ], $atts);
+
     // Check currently watching item
     $watching = nowscrobbling_fetch_trakt_watching();
 
@@ -239,14 +245,16 @@ function nowscr_trakt_history_shortcode() {
     if (!empty($watching)) {
         $type = $watching['type'];
         $id = $watching[$type]['ids']['trakt'];
-        $rating = $ratings_map[$id] ?? '';
-        $rating_text = $rating ? "$rating" : '';
+        $rating = $atts['show_rating'] ? ($ratings_map[$id] ?? '') : '';
+        $rating_text = $rating ? "{$rating}" : '';
         $title = $type == 'movie' ? $watching['movie']['title'] : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
-        $year = $type == 'movie' ? $watching['movie']['year'] : '';
+        $year = $atts['show_year'] && $type == 'movie' ? "{$watching['movie']['year']}" : '';
         $link = $type == 'movie' ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
-        $rewatch = $get_rewatch_count($id, $type == 'movie' ? 'movies' : 'episodes');
-        $rewatch_text = $rewatch > 1 ? $rewatch : '';
-        return nowscrobbling_format_output($title, $year, $link, $rating_text, $rewatch_text);
+        $rewatch = $atts['show_rewatch'] ? $get_rewatch_count($id, $type == 'movie' ? 'movies' : 'episodes') : '';
+        $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
+
+        $nowPlaying = '<img src="' . plugins_url('../public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
+        return "<a class='bubble' href='$link' title='$title' target='_blank'>{$nowPlaying}{$title}{$year}{$rating_text}{$rewatch_text}</a>";
     }
 
     // No currently watching item, show last activity
@@ -262,21 +270,29 @@ function nowscr_trakt_history_shortcode() {
     $lastActivity = reset($activities);
     $type = $lastActivity['type'];
     $id = $lastActivity[$type]['ids']['trakt'];
-    $rating = $ratings_map[$id] ?? '';
-    $rating_text = $rating ? "$rating" : '';
+    $rating = $atts['show_rating'] ? ($ratings_map[$id] ?? '') : '';
+    $rating_text = $rating ? "{$rating}" : '';
     $title = $type == 'movie' ? $lastActivity['movie']['title'] : "{$lastActivity['show']['title']} - S{$lastActivity['episode']['season']}E{$lastActivity['episode']['number']}: {$lastActivity['episode']['title']}";
-    $year = $type == 'movie' ? $lastActivity['movie']['year'] : '';
+    $year = $atts['show_year'] && $type == 'movie' ? "{$lastActivity['movie']['year']}" : '';
     $link = $type == 'movie' ? "https://trakt.tv/movies/{$lastActivity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$lastActivity['show']['ids']['slug']}/seasons/{$lastActivity['episode']['season']}/episodes/{$lastActivity['episode']['number']}";
-    $rewatch = $get_rewatch_count($id, $type == 'movie' ? 'movies' : 'episodes');
-    $rewatch_text = $rewatch > 1 ? $rewatch : '';
+    $rewatch = $atts['show_rewatch'] ? $get_rewatch_count($id, $type == 'movie' ? 'movies' : 'episodes') : '';
+    $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
+
     return nowscrobbling_format_output($title, $year, $link, $rating_text, $rewatch_text);
 }
 add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
 
 
-// Trakt Last Movie Shortcode with Rating and Rewatch
-function nowscr_trakt_last_movie_shortcode()
-{
+
+// Trakt Last Movie Shortcode with optional Year, Rating, and Rewatch display
+function nowscr_trakt_last_movie_shortcode($atts) {
+    // Set default attributes and merge with user attributes
+    $atts = shortcode_atts([
+        'show_year' => false,
+        'show_rewatch' => false,
+        'show_rating' => false,
+    ], $atts);
+
     $movies = nowscrobbling_get_or_set_transient('my_trakt_tv_movies_with_ratings', function () {
         $user = get_option('trakt_user');
         return [
@@ -307,21 +323,21 @@ function nowscr_trakt_last_movie_shortcode()
     $history_positions = [];
 
     // Format the output
-    return nowscrobbling_generate_shortcode_output($movies['movies'], function ($movie) use ($ratings, $rewatch_counts, &$history_positions) {
+    return nowscrobbling_generate_shortcode_output($movies['movies'], function ($movie) use ($ratings, $rewatch_counts, &$history_positions, $atts) {
         $id = $movie['movie']['ids']['trakt'];
-        $rating = $ratings[$id] ?? '';
-        $rating_text = $rating ? "$rating" : '';
+        $rating = $atts['show_rating'] ? ($ratings[$id] ?? '') : '';
+        $rating_text = $rating ? "{$rating}" : '';
         $rewatch_total = count($rewatch_counts[$id]);
         $title = $movie['movie']['title'];
-        $year = $movie['movie']['year'];
+        $year = $atts['show_year'] ? "{$movie['movie']['year']}" : '';
         $url = "https://trakt.tv/movies/{$movie['movie']['ids']['slug']}";
 
         // Adjust the rewatch count based on the position in the history
         if (!isset($history_positions[$id])) {
             $history_positions[$id] = 0;
         }
-        $rewatch = $rewatch_total - $history_positions[$id];
-        $rewatch_text = $rewatch > 1 ? $rewatch : '';
+        $rewatch = $atts['show_rewatch'] ? $rewatch_total - $history_positions[$id] : '';
+        $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
 
         // Increment the position for the next movie in the history
         $history_positions[$id]++;
@@ -332,9 +348,15 @@ function nowscr_trakt_last_movie_shortcode()
 add_shortcode('nowscr_trakt_last_movie', 'nowscr_trakt_last_movie_shortcode');
 
 
-// Trakt Last Show Shortcode with Rating and Rewatch if Completed
-function nowscr_trakt_last_show_shortcode()
-{
+// Trakt Last Show Shortcode with optional Year, Rating, and Rewatch display
+function nowscr_trakt_last_show_shortcode($atts) {
+    // Set default attributes and merge with user attributes
+    $atts = shortcode_atts([
+        'show_year' => false,
+        'show_rewatch' => false,
+        'show_rating' => false,
+    ], $atts);
+
     $shows = nowscrobbling_get_or_set_transient('my_trakt_tv_shows_with_ratings', function () {
         $user = get_option('trakt_user');
         return [
@@ -380,10 +402,10 @@ function nowscr_trakt_last_show_shortcode()
     // Track the position in the history
     $history_positions = [];
 
-    return nowscrobbling_generate_shortcode_output($shows['shows'], function ($show) use ($ratings, $completed_shows, $rewatch_counts, &$history_positions) {
+    return nowscrobbling_generate_shortcode_output($shows['shows'], function ($show) use ($ratings, $completed_shows, $rewatch_counts, &$history_positions, $atts) {
         $id = $show['show']['ids']['trakt'];
-        $rating = $ratings[$id] ?? '';
-        $rating_text = $rating ? "$rating" : '';
+        $rating = $atts['show_rating'] ? ($ratings[$id] ?? '') : '';
+        $rating_text = $rating ? "{$rating}" : '';
         $rewatch_total = count($rewatch_counts[$id]);
         $rewatch_text = '';
 
@@ -391,26 +413,32 @@ function nowscr_trakt_last_show_shortcode()
             if (!isset($history_positions[$id])) {
                 $history_positions[$id] = 0;
             }
-            $rewatch_adjusted = $rewatch_total - $history_positions[$id];
-            $rewatch_text = $rewatch_adjusted > 1 ? $rewatch_adjusted : '';
+            $rewatch = $atts['show_rewatch'] ? $rewatch_total - $history_positions[$id] : '';
+            $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
 
             // Increment the position for the next show in the history
             $history_positions[$id]++;
         }
 
         $title = $show['show']['title'];
-        $year = $show['show']['year'];
+        $year = $atts['show_year'] ? "{$show['show']['year']}" : '';
         $url = "https://trakt.tv/shows/{$show['show']['ids']['slug']}";
 
-        return nowscrobbling_format_output($title, $year, $url, $rating_text/* , $rewatch_text */);
+        return nowscrobbling_format_output($title, $year, $url, $rating_text, $rewatch_text);
     });
 }
 add_shortcode('nowscr_trakt_last_show', 'nowscr_trakt_last_show_shortcode');
 
 
-// Trakt Last Episode Shortcode with Rating and Rewatch
-function nowscr_trakt_last_episode_shortcode()
-{
+// Trakt Last Episode Shortcode with optional Year, Rating, and Rewatch display
+function nowscr_trakt_last_episode_shortcode($atts) {
+    // Set default attributes and merge with user attributes
+    $atts = shortcode_atts([
+        'show_year' => false,
+        'show_rewatch' => false,
+        'show_rating' => false,
+    ], $atts);
+
     $episodes = nowscrobbling_get_or_set_transient('my_trakt_tv_episodes_with_ratings', function () {
         $user = get_option('trakt_user');
         return [
@@ -437,20 +465,20 @@ function nowscr_trakt_last_episode_shortcode()
         $rewatch_counts[$id] = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/episodes/{$id}");
     }
 
-    return nowscrobbling_generate_shortcode_output($episodes['episodes'], function ($episode) use ($ratings, $rewatch_counts) {
+    return nowscrobbling_generate_shortcode_output($episodes['episodes'], function ($episode) use ($ratings, $rewatch_counts, $atts) {
         $season = $episode['episode']['season'];
         $episodeNumber = $episode['episode']['number'];
         $title = "S{$season}E{$episodeNumber}: {$episode['episode']['title']}";
         $url = "https://trakt.tv/shows/{$episode['show']['ids']['slug']}/seasons/{$season}/episodes/{$episodeNumber}";
         $id = $episode['episode']['ids']['trakt'];
-        $rating = $ratings[$id] ?? '';
-        $rating_text = $rating ? "$rating" : '';
+        $rating = $atts['show_rating'] ? ($ratings[$id] ?? '') : '';
+        $rating_text = $rating ? "{$rating}" : '';
         $rewatch_total = count($rewatch_counts[$id]);
 
         // Adjust the rewatch count based on the position in the history
         static $rewatch_offset = 0;
-        $rewatch_adjusted = $rewatch_total - $rewatch_offset;
-        $rewatch_text = $rewatch_adjusted > 1 ? $rewatch_adjusted : '';
+        $rewatch = $atts['show_rewatch'] ? $rewatch_total - $rewatch_offset : '';
+        $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
 
         // Increment the offset for the next episode in the history
         $rewatch_offset++;
@@ -459,6 +487,5 @@ function nowscr_trakt_last_episode_shortcode()
     });
 }
 add_shortcode('nowscr_trakt_last_episode', 'nowscr_trakt_last_episode_shortcode');
-
 
 ?>

@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Version:             1.2.2
-*/
+ * Version: 1.2.4
+ */
 
 // Admin Menu and Settings Registration
 add_action('admin_menu', 'nowscrobbling_admin_menu');
@@ -136,11 +136,13 @@ function nowscrobbling_settings_page()
         <h3>Trakt</h3>
         <ul>
             <li><code>[nowscr_trakt_indicator]</code> - Zeigt den aktuellen Status der Trakt Aktivität an.</li>
-            <li><code>[nowscr_trakt_history]</code> - Zeigt die letzten Scrobbles von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_movie]</code> - Zeigt die letzten Filme von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_movie_with_rating]</code> - Zeigt die letzten Filme mit Bewertung von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_show]</code> - Zeigt die letzten Serien von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_episode]</code> - Zeigt die letzten Episoden von Trakt an.</li>
+            <li><code>[nowscr_trakt_history show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Aktivitäten von Trakt an.</li>
+            <li><code>[nowscr_trakt_last_movie show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Filme von Trakt an.</li>
+            <li><code>[nowscr_trakt_last_show show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Serien von Trakt an.</li>
+            <li><code>[nowscr_trakt_last_episode show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Episoden von Trakt an.</li>
+            <li>Verfügbare Werte für <code>show_year</code>: <code>true</code> oder <code>false</code>.</li>
+            <li>Verfügbare Werte für <code>show_rating</code>: <code>true</code> oder <code>false</code>.</li>
+            <li>Verfügbare Werte für <code>show_rewatch</code>: <code>true</code> oder <code>false</code>.</li>
         </ul>
         <h2>Vorschau der Daten</h2>
         <div id="nowscrobbling-preview">
@@ -161,13 +163,13 @@ function nowscrobbling_settings_page()
             <h4>Status (Indicator)</h4>
             <?php echo do_shortcode('[nowscr_trakt_indicator]'); ?>
             <h4>Letzte Scrobbles (History)</h4>
-            <?php echo do_shortcode('[nowscr_trakt_history]'); ?>
+            <?php echo do_shortcode('[nowscr_trakt_history show_year="true" show_rating="true" show_rewatch="true"]'); ?>
             <h4>Letzte Filme</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_movie]'); ?>
+            <?php echo do_shortcode('[nowscr_trakt_last_movie show_year="true" show_rating="true" show_rewatch="true"]'); ?>
             <h4>Letzte Serien</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_show]'); ?>
+            <?php echo do_shortcode('[nowscr_trakt_last_show show_year="true" show_rating="true" show_rewatch="true"]'); ?>
             <h4>Letzte Episoden</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_episode]'); ?>
+            <?php echo do_shortcode('[nowscr_trakt_last_episode show_year="true" show_rating="true" show_rewatch="true"]'); ?>
         </div>
     </div>
     <?php

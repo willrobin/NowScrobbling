@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.4] - 2024-05-19
+
+### Added
+
+- **Optional year, rating, and rewatch display attributes for Trakt shortcodes:**
+  - Added optional attributes `show_year`, `show_rating`, and `show_rewatch` to the following Trakt shortcodes:
+    - `nowscr_trakt_history_shortcode`
+    - `nowscr_trakt_last_movie_shortcode`
+    - `nowscr_trakt_last_show_shortcode`
+    - `nowscr_trakt_last_episode_shortcode`
+
+### Fixed
+
+- **Fixed an issue with rewatch count and rating display formatting:**
+  - Adjusted the `nowscrobbling_format_output` function to eliminate unnecessary white spaces in the output.
+
+
 ## [1.2.3] - 2024-05-19
 
 ### Fixed
