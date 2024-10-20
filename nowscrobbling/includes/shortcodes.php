@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version:             1.2.5
+ * Version:             1.2.5.1
  * File:                nowscrobbling/includes/shortcodes.php
  */
 
@@ -333,10 +333,13 @@ function nowscr_trakt_history_shortcode($atts) {
             : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
         $rewatch = $atts['show_rewatch'] ? nowscrobbling_get_rewatch_count($id, $type === 'movie' ? 'movies' : 'episodes') : '';
         $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
-
+    
         $nowPlaying = '<img src="' . plugins_url('../public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-        return "<a class='bubble' href='$link' title='$title' target='_blank'>{$title}{$year}{$rating_text}{$rewatch_text}</a>";
+    
+        // Füge $nowPlaying zum Rückgabewert hinzu
+        return "<a class='bubble' href='$link' title='$title' target='_blank'>{$nowPlaying}{$title}{$year}{$rating_text}{$rewatch_text}</a>";
     }
+    
 
     // No currently watching item, show last activity
     $activities = nowscrobbling_get_or_set_transient('my_trakt_tv_history', function () {
