@@ -1,5 +1,5 @@
 /**
- * Version:             1.2.4
+ * Version:             1.2.5
 */
 
 .nowscrobbling {
@@ -50,4 +50,22 @@
     margin-left: 0px;
     margin-right: 0px;
     margin-bottom: 0 !important;
+}
+
+.bubble.truncated {
+    position: relative;
+    white-space: nowrap; /* Verhindert den Zeilenumbruch */
+    overflow: hidden; /* Versteckt den überfließenden Text */
+    text-overflow: ellipsis ; /* Zeigt '...' an, wenn der Text zu lang ist */
+    max-width: 300px; /* Maximale Breite des Containers */
+}
+
+.bubble.truncated::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 2px;
+    width: 50px; /* Breite des Fade-out-Effekts */
+    height: 100%;
+    background: linear-gradient(to left, white, transparent); /* Übergang von rechts nach links ins Transparente */
 }

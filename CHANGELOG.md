@@ -1,10 +1,24 @@
 # Changelog
 
+## [1.2.5] - 2024-10-20
+
+### Added
+- Added sanitization to all admin settings fields using `sanitize_text_field`.
+- Implemented new functions to fetch specific Trakt ratings for movies, shows, and episodes.
+- Added rewatch count tracking for movies and episodes in Trakt API.
+- Enhanced error handling and output formatting in API functions.
+
+### Changed
+- Updated Trakt API URL to use HTTPS instead of HTTP for better security.
+- Updated CSS to improve public-facing elements of the plugin.
+
+### Fixed
+- Fixed missing ABSPATH check to ensure the plugin cannot be accessed directly.
+
 ## [1.2.4] - 2024-05-19
 
 ### Added
-
-- **Optional year, rating, and rewatch display attributes for Trakt shortcodes:**
+- Optional year, rating, and rewatch display attributes for Trakt shortcodes:
   - Added optional attributes `show_year`, `show_rating`, and `show_rewatch` to the following Trakt shortcodes:
     - `nowscr_trakt_history_shortcode`
     - `nowscr_trakt_last_movie_shortcode`
@@ -12,15 +26,13 @@
     - `nowscr_trakt_last_episode_shortcode`
 
 ### Fixed
-
-- **Fixed an issue with rewatch count and rating display formatting:**
+- Fixed an issue with rewatch count and rating display formatting:
   - Adjusted the `nowscrobbling_format_output` function to eliminate unnecessary white spaces in the output.
-
 
 ## [1.2.3] - 2024-05-19
 
 ### Fixed
-- **Rewatch Count Tracking:**
+- Rewatch count tracking:
   - Implemented accurate tracking of rewatch counts for `nowscr_trakt_last_movie` shortcode.
   - Added functionality to track the position in the history to ensure correct rewatch counts per movie.
 
@@ -61,20 +73,20 @@
   - `includes/api-functions.php` for API fetching and data handling functions.
 
 ### Changed
-- **Version Requirement**: The plugin now requires at least WordPress 5.0 and PHP 7.0.
-- **Enqueue Public CSS**: The public stylesheet `nowscrobbling-public.css` is now enqueued correctly within `nowplaying.php`.
-- **Shortcodes**:
+- Version requirement: The plugin now requires at least WordPress 5.0 and PHP 7.0.
+- Enqueue public CSS: The public stylesheet `nowscrobbling-public.css` is now enqueued correctly within `nowplaying.php`.
+- Shortcodes:
   - Enhanced shortcode attributes handling for `period` in `nowscr_lastfm_top_artists`, `nowscr_lastfm_top_albums`, `nowscr_lastfm_top_tracks`, and `nowscr_lastfm_top_tags` to allow specifying the period (`7day`, `1month`, `3month`, `6month`, `12month`, `overall`).
   - Refined the output generation for all shortcodes to ensure consistency and better user experience.
-- **Caching**: Improved caching mechanism for fetching data from Last.fm and Trakt.tv APIs.
-- **Admin Settings**: Enhanced admin settings page layout and functionality for better user experience.
+- Caching: Improved caching mechanism for fetching data from Last.fm and Trakt.tv APIs.
+- Admin settings: Enhanced admin settings page layout and functionality for better user experience.
 
 ### Fixed
-- **Sanitization**: Improved sanitization of input values in the settings to prevent potential security issues.
-- **API Fetching**: Fixed various issues with fetching data from Last.fm and Trakt.tv APIs, including better error handling and displaying error messages to the user.
+- Sanitization: Improved sanitization of input values in the settings to prevent potential security issues.
+- API fetching: Fixed various issues with fetching data from Last.fm and Trakt.tv APIs, including better error handling and displaying error messages to the user.
 
 ### Removed
-- **CSS Inline Styles**: Removed inline styles in favor of a separate CSS file for better maintainability and customization.
+- CSS inline styles: Removed inline styles in favor of a separate CSS file for better maintainability and customization.
 
 ### Notes
 - Users must update their PHP and WordPress versions to meet the new requirements.

@@ -1,8 +1,14 @@
 <?php
 
 /**
- * Version: 1.2.4
+ * Version:             1.2.5
+ * File:                nowscrobbling/includes/admin-settings.php
  */
+
+// Ensure the script is not accessed directly
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
 
 // Admin Menu and Settings Registration
 add_action('admin_menu', 'nowscrobbling_admin_menu');
@@ -24,7 +30,7 @@ function nowscrobbling_register_settings()
     ];
 
     foreach ($settings as $setting) {
-        register_setting('nowscrobbling-settings-group', $setting);
+        register_setting('nowscrobbling-settings-group', $setting, 'sanitize_text_field');
     }
 }
 

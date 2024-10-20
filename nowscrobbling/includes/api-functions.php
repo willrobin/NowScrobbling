@@ -1,11 +1,17 @@
 <?php
 
 /**
- * Version:             1.2.2
+ * Version:             1.2.5
+ * File:                nowscrobbling/includes/api-functions.php
  */
 
+// Ensure the script is not accessed directly
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
+
 // Define constants for API URLs
-define('LASTFM_API_URL', 'http://ws.audioscrobbler.com/2.0/');
+define('LASTFM_API_URL', 'https://ws.audioscrobbler.com/2.0/');
 define('TRAKT_API_URL', 'https://api.trakt.tv/');
 
 // Define constants for options
@@ -169,6 +175,83 @@ function nowscrobbling_fetch_trakt_watched_shows()
     ];
     $url = TRAKT_API_URL . "users/" . TRAKT_USER . "/watched/shows";
     return nowscrobbling_fetch_api_data($url, $headers);
+}
+
+/** 
+ * Fetch specific Trakt Movie Rating 
+ * 
+ * @param int $movie_id The Trakt ID of the movie.
+ * @return int|null The movie rating or null if no rating exists.
+ */
+function nowscrobbling_fetch_trakt_movie_rating($movie_id) {
+    $user = get_option('trakt_user');
+    $rating_data = nowscrobbling_fetch_trakt_data("users/$user/ratings/movies/$movie_id");
+
+    if (isset($rating_data['rating'])) {
+        return $rating_data['rating'];
+    }
+
+    return null; // No rating found
+}
+
+/** 
+ * Fetch specific Trakt Show Rating 
+ * 
+ * @param int $show_id The Trakt ID of the show.
+ * @return int|null The show rating or null if no rating exists.
+ */
+function nowscrobbling_fetch_trakt_show_rating($show_id) {
+    $user = get_option('trakt_user');
+    $rating_data = nowscrobbling_fetch_trakt_data("users/$user/ratings/shows/$show_id");
+
+    if (isset($rating_data['rating'])) {
+        return $rating_data['rating'];
+    }
+
+    return null; // No rating found
+}
+
+/** 
+ * Fetch specific Trakt Episode Rating 
+ * 
+ * @param int $episode_id The Trakt ID of the episode.
+ * @return int|null The episode rating or null if no rating exists.
+ */
+function nowscrobbling_fetch_trakt_episode_rating($episode_id) {
+    $user = get_option('trakt_user');
+    $rating_data = nowscrobbling_fetch_trakt_data("users/$user/ratings/episodes/$episode_id");
+
+    if (isset($rating_data['rating'])) {
+        return $rating_data['rating'];
+    }
+
+    return null; // No rating found
+}
+
+/**
+ * Fetch rewatch count for a movie or episode.
+ *
+ * @param int $id The ID of the movie or episode.
+ * @param string $type The type (e.g., 'movies', 'episodes').
+ * @return int The rewatch count.
+ */
+function nowscrobbling_get_rewatch_count($id, $type) {
+    // Hole den Benutzer aus den Optionen
+    $user = get_option('trakt_user');
+    
+    // Baue den API-Pfad basierend auf dem Typ ('movies' oder 'episodes')
+    $path = "users/$user/history/$type/$id";
+    
+    // Hole die Historie von Trakt
+    $history = nowscrobbling_fetch_trakt_data($path);
+    
+    // Überprüfe, ob die Daten gültig sind
+    if (!is_array($history)) {
+        return 0; // Falls keine Daten vorliegen, gib 0 zurück
+    }
+    
+    // Gib die Anzahl der Wiederholungen zurück (Anzahl der Einträge in der Historie)
+    return count($history);
 }
 
 ?>

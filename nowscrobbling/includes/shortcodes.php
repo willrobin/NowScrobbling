@@ -1,11 +1,16 @@
 <?php
 
 /**
- * Version: 1.2.4
+ * Version:             1.2.5
+ * File:                nowscrobbling/includes/shortcodes.php
  */
 
+// Ensure the script is not accessed directly
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
 
-// Fetch or Set Transient
+ // Fetch or Set Transient
 function nowscrobbling_get_or_set_transient($transient_key, $callback, $expiration = 3600)
 {
     if (false === ($data = get_transient($transient_key))) {
@@ -56,151 +61,248 @@ add_shortcode('nowscr_lastfm_indicator', 'nowscr_lastfm_indicator_shortcode');
 
 
 // Last.fm History Shortcode
-function nowscr_lastfm_history_shortcode()
+function nowscr_lastfm_history_shortcode($atts)
 {
+    // Standardwerte setzen, einschließlich 'max_length'
+    $atts = shortcode_atts([
+        'max_length' => 45  // Standardwert für maximale Zeichenlänge
+    ], $atts);
+
     $scrobbles = nowscrobbling_fetch_lastfm_scrobbles();
     if (isset($scrobbles['error'])) {
-        return "<em>{$scrobbles['error']}</em>";
+        return "<em>" . esc_html($scrobbles['error']) . "</em>";
     }
 
     $output = '';
     foreach ($scrobbles as $track) {
         if ($track['nowplaying']) {
-            $nowPlaying = '<img src="' . plugins_url('../public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-            $output = "<a class='bubble' href='{$track['url']}' title='{$track['name']} von {$track['artist']} auf last.fm' target='_blank'>{$nowPlaying} {$track['artist']} - {$track['name']}</a>";
+            $nowPlaying = '<img src="' . esc_url(plugins_url('../public/images/nowplaying.gif', __FILE__)) . '" alt="NOW PLAYING" /> ';
+            $url = esc_url($track['url']);
+            $artist = esc_html($track['artist']);
+            $name = esc_html($track['name']);
+            $title_attr = esc_attr("{$name} von {$artist} auf last.fm");
+
+            // Text kürzen basierend auf 'max_length'
+            $fullText = "{$artist} - {$name}";
+            $isTruncated = (strlen($fullText) > $atts['max_length']);
+            $shortText = $isTruncated ? substr($fullText, 0, $atts['max_length'] - 3) . '…' : $fullText;
+
+            $class = $isTruncated ? 'bubble truncated' : 'bubble';
+            $output = "<a class='{$class}' href='{$url}' title='{$title_attr}' target='_blank'>{$nowPlaying}{$shortText}</a>";
             break;
         }
     }
 
     if (empty($output) && !empty($scrobbles)) {
         $lastTrack = $scrobbles[0];
-        $output = "<a class='bubble' href='{$lastTrack['url']}' title='{$track['name']} von {$track['artist']} auf last.fm' target='_blank'>{$lastTrack['artist']} - {$lastTrack['name']}</a>";
+        $url = esc_url($lastTrack['url']);
+        $artist = esc_html($lastTrack['artist']);
+        $name = esc_html($lastTrack['name']);
+        $title_attr = esc_attr("{$name} von {$artist} auf last.fm");
+
+        // Text kürzen basierend auf 'max_length'
+        $fullText = "{$artist} - {$name}";
+        $isTruncated = (strlen($fullText) > $atts['max_length']);
+        $shortText = $isTruncated ? substr($fullText, 0, $atts['max_length'] - 3) . '…' : $fullText;
+
+        $class = $isTruncated ? 'bubble truncated' : 'bubble';
+        $output = "<a class='{$class}' href='{$url}' title='{$title_attr}' target='_blank'>{$shortText}</a>";
     }
 
     return $output;
 }
 add_shortcode('nowscr_lastfm_history', 'nowscr_lastfm_history_shortcode');
 
+
 // Last.fm Top Artists Shortcode
 function nowscr_lastfm_top_artists_shortcode($atts)
 {
-    $atts = shortcode_atts(['period' => '7day'], $atts);
+    // Standardwerte setzen, einschließlich 'max_length'
+    $atts = shortcode_atts([
+        'period' => '7day',  // Standardwert für den Zeitraum
+        'max_length' => 15   // Standardwert für maximale Zeichenlänge
+    ], $atts);
+
     $data = nowscrobbling_fetch_lastfm_top_data('topartists', get_option('top_artists_count', 5), $atts['period']);
 
     if (!$data || empty($data['topartists']['artist'])) {
         return "<em>Keine Top-Künstler gefunden.</em>";
     }
 
-    return nowscrobbling_generate_shortcode_output($data['topartists']['artist'], function ($artist) {
+    // Text kürzen basierend auf 'max_length'
+    return nowscrobbling_generate_shortcode_output($data['topartists']['artist'], function ($artist) use ($atts) {
         $name = esc_html($artist['name']);
         $url = esc_url($artist['url']);
-        return "<a class='bubble' href='$url' title='$name auf last.fm'>$name</a>";
+
+        // Prüfen, ob der Künstlername gekürzt wird
+        $isTruncated = (strlen($name) > $atts['max_length']);
+        $shortName = $isTruncated ? substr($name, 0, $atts['max_length'] - 3) . '…' : $name;
+
+        // CSS-Klasse 'truncated' hinzufügen, wenn der Text gekürzt ist
+        $class = $isTruncated ? 'bubble truncated' : 'bubble';
+
+        return "<a class='{$class}' href='$url' title='$name auf last.fm'>$shortName</a>";
     });
 }
 add_shortcode('nowscr_lastfm_top_artists', 'nowscr_lastfm_top_artists_shortcode');
 
+
 // Last.fm Top Albums Shortcode
 function nowscr_lastfm_top_albums_shortcode($atts)
 {
-    $atts = shortcode_atts(['period' => '7day'], $atts);
+    $atts = shortcode_atts([
+        'period' => '7day', 
+        'max_length' => 45
+    ], $atts);
+
     $data = nowscrobbling_fetch_lastfm_top_data('topalbums', get_option('top_albums_count', 5), $atts['period']);
 
     if (!$data || empty($data['topalbums']['album'])) {
         return "<em>Keine Top-Alben gefunden.</em>";
     }
 
-    return nowscrobbling_generate_shortcode_output($data['topalbums']['album'], function ($album) {
+    return nowscrobbling_generate_shortcode_output($data['topalbums']['album'], function ($album) use ($atts) {
         $artistName = esc_html($album['artist']['name']);
         $albumName = esc_html($album['name']);
         $url = esc_url($album['url']);
-        return "<a class='bubble' href='$url' title='$albumName von $artistName auf last.fm'>$artistName - $albumName</a>";
+        $fullText = "{$artistName} - {$albumName}";
+
+        // Prüfen, ob der Text gekürzt wird
+        $isTruncated = (strlen($fullText) > $atts['max_length']);
+        $shortText = $isTruncated ? substr($fullText, 0, $atts['max_length'] - 3) . '…' : $fullText;
+
+        // CSS-Klasse 'truncated' hinzufügen, wenn der Text gekürzt ist
+        $class = $isTruncated ? 'bubble truncated' : 'bubble';
+
+        return "<a class='{$class}' href='$url' title='$albumName von $artistName auf last.fm'>$shortText</a>";
     });
 }
 add_shortcode('nowscr_lastfm_top_albums', 'nowscr_lastfm_top_albums_shortcode');
 
+
 // Last.fm Top Tracks Shortcode
 function nowscr_lastfm_top_tracks_shortcode($atts)
 {
-    $atts = shortcode_atts(['period' => '7day'], $atts);
+    // Standardwerte setzen, einschließlich 'max_length'
+    $atts = shortcode_atts([
+        'period' => '7day',  // Standardwert für den Zeitraum
+        'max_length' => 45   // Standardwert für maximale Zeichenlänge
+    ], $atts);
+
     $data = nowscrobbling_fetch_lastfm_top_data('toptracks', get_option('top_tracks_count', 5), $atts['period']);
 
     if (!$data || empty($data['toptracks']['track'])) {
         return "<em>Keine Top-Titel gefunden.</em>";
     }
 
-    return nowscrobbling_generate_shortcode_output($data['toptracks']['track'], function ($track) {
+    return nowscrobbling_generate_shortcode_output($data['toptracks']['track'], function ($track) use ($atts) {
         $artistName = esc_html($track['artist']['name']);
         $trackName = esc_html($track['name']);
         $url = esc_url($track['url']);
-        return "<a class='bubble' href='$url' title='$trackName von $artistName auf last.fm'>$artistName - $trackName</a>";
+        $fullText = "{$artistName} - {$trackName}";
+
+        // Prüfen, ob der Text (Künstler + Trackname) gekürzt wird
+        $isTruncated = (strlen($fullText) > $atts['max_length']);
+        $shortText = $isTruncated ? substr($fullText, 0, $atts['max_length'] - 3) . '…' : $fullText;
+
+        // CSS-Klasse 'truncated' hinzufügen, wenn der Text gekürzt ist
+        $class = $isTruncated ? 'bubble truncated' : 'bubble';
+
+        return "<a class='{$class}' href='$url' title='$trackName von $artistName auf last.fm'>$shortText</a>";
     });
 }
 add_shortcode('nowscr_lastfm_top_tracks', 'nowscr_lastfm_top_tracks_shortcode');
 
 // Last.fm Loved Tracks Shortcode
-function nowscr_lastfm_lovedtracks_shortcode()
+function nowscr_lastfm_lovedtracks_shortcode($atts)
 {
+    // Standardwerte setzen, einschließlich 'max_length'
+    $atts = shortcode_atts([
+        'max_length' => 45   // Standardwert für maximale Zeichenlänge
+    ], $atts);
+
     $data = nowscrobbling_fetch_lastfm_top_data('lovedtracks', get_option('lovedtracks_count', 5), 'overall');
 
     if (!$data || empty($data['lovedtracks']['track'])) {
         return "<em>Keine Lieblingslieder gefunden.</em>";
     }
 
-    return nowscrobbling_generate_shortcode_output($data['lovedtracks']['track'], function ($track) {
+    return nowscrobbling_generate_shortcode_output($data['lovedtracks']['track'], function ($track) use ($atts) {
         $artistName = esc_html($track['artist']['name']);
         $trackName = esc_html($track['name']);
         $url = esc_url($track['url']);
-        return "<a class='bubble' href='$url' title='$trackName von $artistName auf last.fm'>$artistName - $trackName</a>";
+        $fullText = "{$artistName} - {$trackName}";
+
+        // Prüfen, ob der Text (Künstler + Trackname) gekürzt wird
+        $isTruncated = (strlen($fullText) > $atts['max_length']);
+        $shortText = $isTruncated ? substr($fullText, 0, $atts['max_length'] - 3) . '…' : $fullText;
+
+        // CSS-Klasse 'truncated' hinzufügen, wenn der Text gekürzt ist
+        $class = $isTruncated ? 'bubble truncated' : 'bubble';
+
+        return "<a class='{$class}' href='$url' title='$trackName von $artistName auf last.fm'>$shortText</a>";
     });
 }
 add_shortcode('nowscr_lastfm_lovedtracks', 'nowscr_lastfm_lovedtracks_shortcode');
 
 
-
 // TRAKT //
 
 
-function nowscrobbling_format_output($title, $year, $url, $rating = '', $rewatch = '') {
+function nowscrobbling_format_output($title, $year, $url, $rating = '', $rewatch = '')
+{
+    // Escape variables
+    $escaped_title = esc_html($title);
+    $escaped_year = esc_html($year);
+    $escaped_url = esc_url($url);
+    $escaped_rating = esc_html($rating);
+    $escaped_rewatch = esc_html($rewatch);
+
     // Define individual elements with title attributes
     $elements = [
-        'title' => "$title",
-        'year' => $year ? " <span title='Die Veröffentlichung von $title war im Jahr $year' style='font-style: italic; opacity: 0.66;'>($year)</span>" : '',
-        'rating' => $rating ? " <span title='Ich bewerte $title mit $rating von 10'><span style='font-size: 1rem;'>★</span>$rating</span>" : '',
-        'rewatch' => $rewatch ? "<span title='Ich schaute $title zum $rewatch. mal' style='font-style: italic; opacity: 0.33;'>#$rewatch</span>" : ''
+        'title' => $escaped_title,
+        'year' => $year ? " <span title='" . esc_attr("Die Veröffentlichung von $title war im Jahr $year") . "' style='font-style: italic; opacity: 0.66;'>($escaped_year)</span>" : '',
+        'rating' => $rating ? " <span title='" . esc_attr("Ich bewerte $title mit $rating von 10") . "'><span style='font-size: 1rem;'>★</span>$escaped_rating</span>" : '',
+        'rewatch' => $rewatch ? "<span title='" . esc_attr("Ich schaute $title zum $rewatch. mal") . "' style='font-style: italic; opacity: 0.33;'>#$escaped_rewatch</span>" : ''
     ];
 
+    // Escape the title attribute for the <a> element
+    $link_title_attr = esc_attr("$title auf Trakt");
+
     // Customize the order and separators of elements here
-    return "<a class='bubble' href='$url' title='$title auf Trakt' target='_blank'>{$elements['title']}{$elements['year']}{$elements['rewatch']}{$elements['rating']}</a>";
+    return "<a class='bubble' href='{$escaped_url}' title='{$link_title_attr}' target='_blank'>{$elements['title']}{$elements['year']}{$elements['rewatch']}{$elements['rating']}</a>";
 }
 
-
-// Trakt Indicator Shortcode
+/**
+ * Trakt Indicator Shortcode
+ */
 function nowscr_trakt_indicator_shortcode() {
     // Check currently watching item
     $watching = nowscrobbling_fetch_trakt_watching();
 
     if (!empty($watching)) {
         $type = $watching['type'];
-        $title = $type == 'movie' ? "{$watching['movie']['title']} ({$watching['movie']['year']})" : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
-        $link = $type == 'movie' ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
-        return "<strong>Scrobbelt gerade</strong>";
+        $title = $type === 'movie'
+            ? "{$watching['movie']['title']} ({$watching['movie']['year']})"
+            : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
+        return '<strong>Scrobbelt gerade</strong>';
     }
 
-    // No currently watching item, show last activity
-    $cache_duration = get_option('trakt_cache_duration', 1) * MINUTE_IN_SECONDS;
-    $activities = get_transient('nowscrobbling_trakt_activities');
-    if ($activities === false) {
-        $activities = nowscrobbling_fetch_trakt_activities();
-        set_transient('nowscrobbling_trakt_activities', $activities, $cache_duration);
-    }
+    $activities = nowscrobbling_get_or_set_transient('my_trakt_tv_activities', function () {
+        return nowscrobbling_fetch_trakt_activities();
+    }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
+
     if (empty($activities)) {
-        return "<em>Keine kürzlichen Aktivitäten gefunden</em>";
+        return '<em>Keine kürzlichen Aktivitäten gefunden</em>';
     }
+
     $lastActivity = reset($activities);
     $lastActivityDate = $lastActivity['watched_at'];
     $date = new DateTime($lastActivityDate);
     $date->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
-    return 'Zuletzt geschaut: ' . $date->format(get_option('date_format') . ' ' . get_option('time_format'));
+    $formatted_date = esc_html($date->format(get_option('date_format') . ' ' . get_option('time_format')));
+
+    return 'Zuletzt geschaut: ' . $formatted_date;
 }
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
 
@@ -216,73 +318,74 @@ function nowscr_trakt_history_shortcode($atts) {
 
     // Check currently watching item
     $watching = nowscrobbling_fetch_trakt_watching();
-
-    // Get user ratings
-    $user = get_option('trakt_user');
-    $ratings = nowscrobbling_get_or_set_transient('my_trakt_tv_ratings', function () use ($user) {
-        return [
-            'movie_ratings' => nowscrobbling_fetch_trakt_data("users/$user/ratings/movies"),
-            'show_ratings' => nowscrobbling_fetch_trakt_data("users/$user/ratings/shows"),
-            'episode_ratings' => nowscrobbling_fetch_trakt_data("users/$user/ratings/episodes")
-        ];
-    }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
-
-    // Collect ratings
-    $ratings_map = [];
-    foreach (['movie_ratings', 'show_ratings', 'episode_ratings'] as $rating_type) {
-        foreach ($ratings[$rating_type] as $rating) {
-            $id = $rating[$rating_type === 'episode_ratings' ? 'episode' : ($rating_type === 'movie_ratings' ? 'movie' : 'show')]['ids']['trakt'];
-            $ratings_map[$id] = $rating['rating'];
-        }
-    }
-
-    // Function to get rewatch count
-    $get_rewatch_count = function($id, $type) use ($user) {
-        $history = nowscrobbling_fetch_trakt_data("users/$user/history/$type/$id");
-        return count($history);
-    };
-
+    
     if (!empty($watching)) {
         $type = $watching['type'];
         $id = $watching[$type]['ids']['trakt'];
-        $rating = $atts['show_rating'] ? ($ratings_map[$id] ?? '') : '';
-        $rating_text = $rating ? "{$rating}" : '';
-        $title = $type == 'movie' ? $watching['movie']['title'] : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
-        $year = $atts['show_year'] && $type == 'movie' ? "{$watching['movie']['year']}" : '';
-        $link = $type == 'movie' ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
-        $rewatch = $atts['show_rewatch'] ? $get_rewatch_count($id, $type == 'movie' ? 'movies' : 'episodes') : '';
+        $rating = $atts['show_rating'] ? nowscrobbling_fetch_specific_trakt_rating($type, $id) : '';
+        $rating_text = $rating ? "<span class='rating'>★{$rating}/10</span>" : '';
+        $title = $type === 'movie'
+            ? $watching['movie']['title']
+            : "{$watching['show']['title']} - S{$watching['episode']['season']}E{$watching['episode']['number']}: {$watching['episode']['title']}";
+        $year = $atts['show_year'] && $type === 'movie' ? "{$watching['movie']['year']}" : '';
+        $link = $type === 'movie'
+            ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}"
+            : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
+        $rewatch = $atts['show_rewatch'] ? nowscrobbling_get_rewatch_count($id, $type === 'movie' ? 'movies' : 'episodes') : '';
         $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
 
         $nowPlaying = '<img src="' . plugins_url('../public/images/nowplaying.gif', __FILE__) . '" alt="NOW PLAYING" /> ';
-        return "<a class='bubble' href='$link' title='$title' target='_blank'>{$nowPlaying}{$title}{$year}{$rating_text}{$rewatch_text}</a>";
+        return "<a class='bubble' href='$link' title='$title' target='_blank'>{$title}{$year}{$rating_text}{$rewatch_text}</a>";
     }
 
     // No currently watching item, show last activity
-    $activities = nowscrobbling_get_or_set_transient('my_trakt_tv_history', function () use ($user) {
+    $activities = nowscrobbling_get_or_set_transient('my_trakt_tv_history', function () {
         return nowscrobbling_fetch_trakt_activities();
     }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
 
     if (empty($activities)) {
-        return "<em>Keine kürzlichen Aktivitäten gefunden</em>";
+        return '<em>Keine kürzlichen Aktivitäten gefunden</em>';
     }
 
     // Last activity output
     $lastActivity = reset($activities);
     $type = $lastActivity['type'];
     $id = $lastActivity[$type]['ids']['trakt'];
-    $rating = $atts['show_rating'] ? ($ratings_map[$id] ?? '') : '';
-    $rating_text = $rating ? "{$rating}" : '';
-    $title = $type == 'movie' ? $lastActivity['movie']['title'] : "{$lastActivity['show']['title']} - S{$lastActivity['episode']['season']}E{$lastActivity['episode']['number']}: {$lastActivity['episode']['title']}";
-    $year = $atts['show_year'] && $type == 'movie' ? "{$lastActivity['movie']['year']}" : '';
-    $link = $type == 'movie' ? "https://trakt.tv/movies/{$lastActivity['movie']['ids']['slug']}" : "https://trakt.tv/shows/{$lastActivity['show']['ids']['slug']}/seasons/{$lastActivity['episode']['season']}/episodes/{$lastActivity['episode']['number']}";
-    $rewatch = $atts['show_rewatch'] ? $get_rewatch_count($id, $type == 'movie' ? 'movies' : 'episodes') : '';
+    $rating = $atts['show_rating'] ? nowscrobbling_fetch_specific_trakt_rating($type, $id) : '';
+    $rating_text = $rating ? "<span class='rating'>★{$rating}/10</span>" : '';
+    $title = $type === 'movie'
+        ? $lastActivity['movie']['title']
+        : "{$lastActivity['show']['title']} - S{$lastActivity['episode']['season']}E{$lastActivity['episode']['number']}: {$lastActivity['episode']['title']}";
+    $year = $atts['show_year'] && $type === 'movie' ? "{$lastActivity['movie']['year']}" : '';
+    $link = $type === 'movie'
+        ? "https://trakt.tv/movies/{$lastActivity['movie']['ids']['slug']}"
+        : "https://trakt.tv/shows/{$lastActivity['show']['ids']['slug']}/seasons/{$lastActivity['episode']['season']}/episodes/{$lastActivity['episode']['number']}";
+    $rewatch = $atts['show_rewatch'] ? nowscrobbling_get_rewatch_count($id, $type === 'movie' ? 'movies' : 'episodes') : '';
     $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
 
     return nowscrobbling_format_output($title, $year, $link, $rating_text, $rewatch_text);
 }
 add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
 
-
+// Fetch specific Trakt rating for movies, shows, or episodes
+function nowscrobbling_fetch_specific_trakt_rating($type, $id)
+{
+    $user = get_option('trakt_user');
+    switch ($type) {
+        case 'movie':
+            $rating_data = nowscrobbling_fetch_trakt_data("users/$user/ratings/movies/$id");
+            break;
+        case 'show':
+            $rating_data = nowscrobbling_fetch_trakt_data("users/$user/ratings/shows/$id");
+            break;
+        case 'episode':
+            $rating_data = nowscrobbling_fetch_trakt_data("users/$user/ratings/episodes/$id");
+            break;
+        default:
+            return null;
+    }
+    return $rating_data['rating'] ?? null;
+}
 
 // Trakt Last Movie Shortcode with optional Year, Rating, and Rewatch display
 function nowscr_trakt_last_movie_shortcode($atts) {
@@ -302,7 +405,7 @@ function nowscr_trakt_last_movie_shortcode($atts) {
     }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
 
     if (!$movies['movies']) {
-        return "<em>Keine Filme gefunden.</em>";
+        return '<em>' . esc_html__('Keine Filme gefunden.', 'nowscrobbling') . '</em>';
     }
 
     $ratings = [];
@@ -314,7 +417,7 @@ function nowscr_trakt_last_movie_shortcode($atts) {
     $rewatch_counts = [];
 
     // Get rewatch counts for each movie
-    foreach ($movies['movies'] as $index => $movie) {
+    foreach ($movies['movies'] as $movie) {
         $id = $movie['movie']['ids']['trakt'];
         $rewatch_counts[$id] = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/movies/{$id}");
     }
@@ -379,10 +482,10 @@ function nowscr_trakt_last_show_shortcode($atts) {
     foreach ($shows['completed'] as $completed_show) {
         $show_id = $completed_show['show']['ids']['trakt'];
         $completed_episodes = array_reduce($completed_show['seasons'], function($carry, $season) {
-            return $carry + $season['episode_count'];
+            return $carry + (isset($season['episode_count']) ? $season['episode_count'] : 0);
         }, 0);
         $watched_episodes = array_reduce($completed_show['seasons'], function($carry, $season) {
-            return $carry + $season['completed'];
+            return $carry + (isset($season['completed']) ? $season['completed'] : 0);
         }, 0);
 
         if ($watched_episodes === $completed_episodes) {
