@@ -32,6 +32,8 @@ function nowscrobbling_register_settings()
     foreach ($settings as $setting) {
         register_setting('nowscrobbling-settings-group', $setting, 'sanitize_text_field');
     }
+    register_setting('nowscrobbling-settings-group', 'nowscrobbling_debug_log');
+    register_setting('nowscrobbling-settings-group', 'nowscrobbling_log');
 }
 
 // Callback functions for settings fields
@@ -44,6 +46,9 @@ function nowscrobbling_setting_callback($setting, $type = 'text', $options = [])
             echo "<option value='{$key}' " . selected($value, $key, false) . ">{$label}</option>";
         }
         echo "</select>";
+    } elseif ($type == 'checkbox') {
+        $checked = checked(1, $value, false);
+        echo "<input type='checkbox' name='{$setting}' value='1' {$checked} />";
     } else {
         $min = $options['min'] ?? '';
         echo "<input type='{$type}' name='{$setting}' value='{$value}' min='{$min}' />";
@@ -73,6 +78,7 @@ add_action('admin_init', function () {
         ['trakt_cache_duration', 'Trakt Cache-Dauer (Minuten)', 'number', ['min' => 1, 'default' => 60]],
         ['lastfm_activity_limit', 'Anzahl der last.fm Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
         ['trakt_activity_limit', 'Anzahl der Trakt Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
+        ['nowscrobbling_debug_log', 'Debug-Log aktivieren', 'checkbox', ['default' => 0]],
     ];
 
     foreach ($fields as $field) {
@@ -86,29 +92,14 @@ add_action('admin_init', function () {
     }
 });
 
-// Function to clear all relevant transients
-function nowscrobbling_clear_all_caches()
-{
-    $transients = [
-        'my_lastfm_scrobbles',
-        'lastfm_top_artists',
-        'lastfm_top_albums',
-        'lastfm_top_tracks',
-        'lastfm_lovedtracks',
-        'my_trakt_tv_activities',
-        'my_trakt_tv_movies',
-        'my_trakt_tv_shows',
-        'my_trakt_tv_episodes'
-    ];
-
-    foreach ($transients as $transient) {
-        delete_transient($transient);
-    }
-}
 
 // Settings Page Content
 function nowscrobbling_settings_page()
 {
+    if (isset($_POST['clear_log']) && check_admin_referer('nowscrobbling_clear_log', 'nowscrobbling_log_nonce')) {
+        delete_option('nowscrobbling_log');
+        echo '<div class="updated"><p>Debug-Log wurde geleert.</p></div>';
+    }
     if (isset($_POST['clear_cache']) && check_admin_referer('nowscrobbling_clear_cache', 'nowscrobbling_nonce')) {
         nowscrobbling_clear_all_caches();
         echo '<div class="updated"><p>Alle Caches wurden erfolgreich geleert.</p></div>';
@@ -127,6 +118,20 @@ function nowscrobbling_settings_page()
             <?php wp_nonce_field('nowscrobbling_clear_cache', 'nowscrobbling_nonce'); ?>
             <input type="submit" name="clear_cache" value="Cache leeren" class="button">
         </form>
+        <?php if (get_option('nowscrobbling_debug_log')): ?>
+            <h2>Debug-Log</h2>
+            <form method="post">
+                <?php wp_nonce_field('nowscrobbling_clear_log', 'nowscrobbling_log_nonce'); ?>
+                <input type="submit" name="clear_log" value="Log leeren" class="button">
+            </form>
+            <pre style="background: #fff; border: 1px solid #ccc; padding: 10px; max-height: 300px; overflow: auto;"><?php
+                $log = get_option('nowscrobbling_log', []);
+                if (!is_array($log)) {
+                    $log = [];
+                }
+                echo esc_html(implode("\n", $log));
+            ?></pre>
+        <?php endif; ?>
         <h2>Verfügbare Shortcodes</h2>
         <p>Du kannst diese Shortcodes verwenden, um Inhalte in Beiträgen, Seiten oder Widgets anzuzeigen:</p>
         <h3>Last.fm</h3>
