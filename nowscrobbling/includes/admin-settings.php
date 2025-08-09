@@ -1,8 +1,7 @@
 <?php
-
 /**
- * Version:             1.2.5
  * File:                nowscrobbling/includes/admin-settings.php
+ * Description:         Admin settings and configuration for NowScrobbling plugin
  */
 
 // Ensure the script is not accessed directly
@@ -21,37 +20,68 @@ function nowscrobbling_admin_menu()
 
 function nowscrobbling_register_settings()
 {
-    $settings = [
-        'lastfm_api_key', 'lastfm_user', 'trakt_client_id', 'trakt_user',
+    // Text options
+    register_setting('nowscrobbling-settings-group', 'lastfm_api_key', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('nowscrobbling-settings-group', 'lastfm_user', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('nowscrobbling-settings-group', 'trakt_client_id', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('nowscrobbling-settings-group', 'trakt_user', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ]);
+
+    // Integer helpers
+    $int_settings = [
         'top_tracks_count', 'top_artists_count', 'top_albums_count', 'lovedtracks_count',
         'last_movies_count', 'last_shows_count', 'last_episodes_count',
         'cache_duration', 'lastfm_cache_duration', 'trakt_cache_duration',
-        'lastfm_activity_limit', 'trakt_activity_limit'
+        'lastfm_activity_limit', 'trakt_activity_limit',
     ];
-
-    foreach ($settings as $setting) {
-        register_setting('nowscrobbling-settings-group', $setting, 'sanitize_text_field');
+    foreach ( $int_settings as $setting ) {
+        register_setting( 'nowscrobbling-settings-group', $setting, [
+            'type' => 'integer',
+            'sanitize_callback' => function( $value ) {
+                $v = absint( $value );
+                return $v < 1 ? 1 : $v;
+            }
+        ] );
     }
-    register_setting('nowscrobbling-settings-group', 'nowscrobbling_debug_log');
-    register_setting('nowscrobbling-settings-group', 'nowscrobbling_log');
+
+    // Booleans
+    // Rewatch and AJAX are always enabled; no settings needed
+
+    // Debug log content is an array of lines; keep as array or reset to empty array
+    register_setting('nowscrobbling-settings-group', 'nowscrobbling_log', [
+        'type' => 'array',
+        'sanitize_callback' => function( $value ) {
+            if ( is_array( $value ) ) {
+                return array_map( 'sanitize_text_field', $value );
+            }
+            return [];
+        }
+    ]);
+
+    // Polling/backoff tuning
+    register_setting('nowscrobbling-settings-group', 'ns_nowplaying_interval', [ 'type' => 'integer', 'sanitize_callback' => function( $value ) { $v = absint($value); return $v < 5 ? 5 : $v; } ]);
+    register_setting('nowscrobbling-settings-group', 'ns_max_interval', [ 'type' => 'integer', 'sanitize_callback' => function( $value ) { $v = absint($value); return $v < 30 ? 30 : $v; } ]);
+    register_setting('nowscrobbling-settings-group', 'ns_backoff_multiplier', [ 'type' => 'number', 'sanitize_callback' => function( $value ) { $v = floatval($value); return $v < 1 ? 1 : $v; } ]);
 }
 
 // Callback functions for settings fields
 function nowscrobbling_setting_callback($setting, $type = 'text', $options = [])
 {
-    $value = esc_attr(get_option($setting, $options['default'] ?? ''));
-    if ($type == 'select') {
-        echo "<select name='{$setting}'>";
-        foreach ($options['choices'] as $key => $label) {
-            echo "<option value='{$key}' " . selected($value, $key, false) . ">{$label}</option>";
+    $value = get_option($setting, $options['default'] ?? '');
+    if ($type === 'select') {
+        echo '<select name="' . esc_attr($setting) . '" id="' . esc_attr($setting) . '">';
+        foreach (($options['choices'] ?? []) as $key => $label) {
+            echo '<option value="' . esc_attr($key) . '" ' . selected($value, $key, false) . '>' . esc_html($label) . '</option>';
         }
-        echo "</select>";
-    } elseif ($type == 'checkbox') {
-        $checked = checked(1, $value, false);
-        echo "<input type='checkbox' name='{$setting}' value='1' {$checked} />";
+        echo '</select>';
+    } elseif ($type === 'checkbox') {
+        // Hidden field ensures unchecked state is saved as 0
+        echo '<input type="hidden" name="' . esc_attr($setting) . '" value="0" />';
+        $checked = checked(1, (int) $value, false);
+        echo '<input type="checkbox" name="' . esc_attr($setting) . '" id="' . esc_attr($setting) . '" value="1" ' . $checked . ' />';
     } else {
-        $min = $options['min'] ?? '';
-        echo "<input type='{$type}' name='{$setting}' value='{$value}' min='{$min}' />";
+        $min = isset($options['min']) ? ' min="' . esc_attr((string)$options['min']) . '"' : '';
+        $step = isset($options['step']) ? ' step="' . esc_attr((string)$options['step']) . '"' : '';
+        echo '<input type="' . esc_attr($type) . '" name="' . esc_attr($setting) . '" id="' . esc_attr($setting) . '" value="' . esc_attr((string)$value) . '"' . $min . $step . ' />';
     }
 }
 
@@ -62,23 +92,28 @@ add_action('admin_init', function () {
     }, 'nowscrobbling');
 
     $fields = [
-        ['lastfm_api_key', 'Last.fm API Schlüssel'],
-        ['lastfm_user', 'Last.fm Benutzername'],
-        ['trakt_client_id', 'Trakt Client ID'],
-        ['trakt_user', 'Trakt Benutzername'],
-        ['top_tracks_count', 'Anzahl der Top-Titel', 'number', ['min' => 1, 'default' => 5]],
-        ['top_artists_count', 'Anzahl der Top-Künstler', 'number', ['min' => 1, 'default' => 5]],
-        ['top_albums_count', 'Anzahl der Top-Alben', 'number', ['min' => 1, 'default' => 5]],
-        ['lovedtracks_count', 'Anzahl der Lieblingslieder', 'number', ['min' => 1, 'default' => 5]],
-        ['last_movies_count', 'Anzahl der letzten Filme', 'number', ['min' => 1, 'default' => 3]],
-        ['last_shows_count', 'Anzahl der letzten Serien', 'number', ['min' => 1, 'default' => 3]],
-        ['last_episodes_count', 'Anzahl der letzten Episoden', 'number', ['min' => 1, 'default' => 3]],
-        ['cache_duration', 'Dauer des Transient-Cache (Minuten)', 'number', ['min' => 1, 'default' => 60]],
-        ['lastfm_cache_duration', 'Last.fm Cache-Dauer (Minuten)', 'number', ['min' => 1, 'default' => 60]],
-        ['trakt_cache_duration', 'Trakt Cache-Dauer (Minuten)', 'number', ['min' => 1, 'default' => 60]],
-        ['lastfm_activity_limit', 'Anzahl der last.fm Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
-        ['trakt_activity_limit', 'Anzahl der Trakt Aktivitäten', 'number', ['min' => 1, 'default' => 5]],
+        ['lastfm_api_key', 'Last.fm API Schlüssel', 'password'],
+        ['lastfm_user', 'Last.fm Benutzername', 'text'],
+        ['trakt_client_id', 'Trakt Client ID', 'password'],
+        ['trakt_user', 'Trakt Benutzername', 'text'],
+        ['top_tracks_count', 'Anzahl der Top-Titel', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
+        ['top_artists_count', 'Anzahl der Top-Künstler', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
+        ['top_albums_count', 'Anzahl der Top-Alben', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
+        ['lovedtracks_count', 'Anzahl der Lieblingslieder', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
+        ['last_movies_count', 'Anzahl der letzten Filme', 'number', ['min' => 1, 'step' => 1, 'default' => 3]],
+        ['last_shows_count', 'Anzahl der letzten Serien', 'number', ['min' => 1, 'step' => 1, 'default' => 3]],
+        ['last_episodes_count', 'Anzahl der letzten Episoden', 'number', ['min' => 1, 'step' => 1, 'default' => 3]],
+        ['cache_duration', 'Dauer des Transient-Cache (Minuten)', 'number', ['min' => 1, 'step' => 1, 'default' => 60]],
+        ['lastfm_cache_duration', 'Last.fm Cache-Dauer (Minuten)', 'number', ['min' => 1, 'step' => 1, 'default' => 1]],
+        ['trakt_cache_duration', 'Trakt Cache-Dauer (Minuten)', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
+        ['lastfm_activity_limit', 'Anzahl der last.fm Aktivitäten', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
+        ['trakt_activity_limit', 'Anzahl der Trakt Aktivitäten', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
         ['nowscrobbling_debug_log', 'Debug-Log aktivieren', 'checkbox', ['default' => 0]],
+        // AJAX is always enabled; option removed
+        ['ns_enable_rewatch', 'Rewatch-Zählung aktivieren (teure Abfragen)', 'checkbox', ['default' => 0]],
+        ['ns_nowplaying_interval', 'Polling: Intervall für Now-Playing (Sekunden)', 'number', ['min' => 5, 'step' => 1, 'default' => 20]],
+        ['ns_max_interval', 'Polling: Maximalintervall (Sekunden)', 'number', ['min' => 30, 'step' => 5, 'default' => 300]],
+        ['ns_backoff_multiplier', 'Polling: Backoff Multiplikator', 'number', ['min' => 1, 'step' => 0.1, 'default' => 2]],
     ];
 
     foreach ($fields as $field) {
@@ -92,98 +127,520 @@ add_action('admin_init', function () {
     }
 });
 
-
 // Settings Page Content
 function nowscrobbling_settings_page()
 {
+    if ( ! current_user_can('manage_options') ) {
+        wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'nowscrobbling' ) );
+    }
+
+    // Handle form submissions
     if (isset($_POST['clear_log']) && check_admin_referer('nowscrobbling_clear_log', 'nowscrobbling_log_nonce')) {
         delete_option('nowscrobbling_log');
         echo '<div class="updated"><p>Debug-Log wurde geleert.</p></div>';
     }
+    
     if (isset($_POST['clear_cache']) && check_admin_referer('nowscrobbling_clear_cache', 'nowscrobbling_nonce')) {
         nowscrobbling_clear_all_caches();
         echo '<div class="updated"><p>Alle Caches wurden erfolgreich geleert.</p></div>';
     }
+    
+    if (isset($_POST['test_apis']) && check_admin_referer('nowscrobbling_test_apis', 'nowscrobbling_test_nonce')) {
+        $results = nowscrobbling_test_api_connections();
+        update_option('ns_last_api_test', [ 'ts' => current_time('mysql'), 'results' => $results ], false);
+    }
+    if (isset($_POST['reset_metrics']) && check_admin_referer('nowscrobbling_reset_metrics', 'nowscrobbling_metrics_nonce')) {
+        delete_option('ns_metrics');
+        echo '<div class="updated"><p>Metriken wurden zurückgesetzt.</p></div>';
+    }
+    
+    // Precompute config flags used for UI state
+    $lastfm_configured = !empty(get_option('lastfm_api_key')) && !empty(get_option('lastfm_user'));
+    $trakt_configured  = !empty(get_option('trakt_client_id')) && !empty(get_option('trakt_user'));
+
     ?>
     <div class="wrap">
-        <h1>NowScrobbling Settings</h1>
-        <form method="post" action="options.php">
-            <?php
-            settings_fields('nowscrobbling-settings-group');
-            do_settings_sections('nowscrobbling');
-            submit_button('Speichern');
-            ?>
-        </form>
-        <form method="post">
-            <?php wp_nonce_field('nowscrobbling_clear_cache', 'nowscrobbling_nonce'); ?>
-            <input type="submit" name="clear_cache" value="Cache leeren" class="button">
-        </form>
-        <?php if (get_option('nowscrobbling_debug_log')): ?>
-            <h2>Debug-Log</h2>
-            <form method="post">
-                <?php wp_nonce_field('nowscrobbling_clear_log', 'nowscrobbling_log_nonce'); ?>
-                <input type="submit" name="clear_log" value="Log leeren" class="button">
+        <h1>NowScrobbling Einstellungen</h1>
+        <?php if ( function_exists('settings_errors') ) { settings_errors(); } ?>
+        <style>
+            .ns-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.2px}
+            .ns-badge.ok{background:#e7f7ee;color:#0a7f3f;border:1px solid #bfe9d0}
+            .ns-badge.warn{background:#fff6e5;color:#9a6a00;border:1px solid #ffe2a8}
+            .ns-badge.err{background:#fdecec;color:#a10b0b;border:1px solid #f7b4b4}
+            .ns-badge.cache{background:#e8f0ff;color:#1a56db;border:1px solid #c4d6ff}
+            .ns-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+            .ns-col{padding:6px 0}
+            details.ns-block{margin:12px 0}
+            details.ns-block > summary{cursor:pointer;font-weight:600}
+            .form-table td input[type="text"], .form-table td input[type="number"], .form-table td input[type="password"], .form-table td select {min-width:260px}
+            .form-table th, .form-table td { padding:6px 8px }
+            .ns-toolbar form{display:inline;margin-right:8px}
+            .ns-copy{cursor:pointer; user-select: none}
+            .ns-copy:hover{background:#f0f0f1}
+            .ns-alt{font-size:12px;color:#555;margin-left: 2px}
+            .ns-alt code{cursor:pointer}
+            table.ns-preview{width:100%;border-collapse:collapse}
+            table.ns-preview th, table.ns-preview td{border-bottom:1px solid #e3e5e8;padding:8px;vertical-align:top}
+            table.ns-preview th{text-align:left;color:#333}
+            .ns-col-shortcode{width:30%}
+            .ns-col-output{width:55%}
+            .ns-col-source{width:15%}
+            /* kompakter Status-Block */
+            .ns-status-table th, .ns-status-table td{padding:4px 8px}
+            .ns-status-table tr{line-height:1.2}
+        </style>
+        
+        <!-- Status Overview -->
+        <div class="card" style="max-width: 100%; margin-bottom: 20px;">
+            <h2 class="title">Status & Verfügbarkeit</h2>
+            <table class="form-table ns-status-table">
+                <tr>
+                    <th>Plugin Version:</th>
+                    <td><?php echo esc_html(NOWSCROBBLING_VERSION); ?></td>
+                </tr>
+                <tr>
+                    <th>Cron Job Status:</th>
+                    <td>
+                        <?php $cron_scheduled = wp_next_scheduled('nowscrobbling_cache_refresh'); ?>
+                        <span class="ns-badge <?php echo $cron_scheduled ? 'ok' : 'warn'; ?>">
+                            <?php echo $cron_scheduled ? ('Geplant · nächster Lauf in ' . esc_html(human_time_diff(time(), $cron_scheduled))) : 'Nicht geplant'; ?>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Cache Status:</th>
+                    <td>
+                        <?php 
+                        $cache_keys = get_option('nowscrobbling_transient_keys', []);
+                        $active_caches = 0;
+                        foreach ($cache_keys as $key) {
+                            if (get_transient($key) !== false) {
+                                $active_caches++;
+                            }
+                        }
+                        echo '<span class="ns-badge ' . ($active_caches > 0 ? 'ok' : 'warn') . '">' . intval($active_caches) . ' aktiv</span> von ' . count($cache_keys) . ' Schlüsseln';
+                        ?>
+                    </td>
+                </tr>
+            </table>
+            <div class="ns-toolbar" style="margin-top:8px;">
+                <form method="post">
+                    <?php wp_nonce_field('nowscrobbling_clear_cache', 'nowscrobbling_nonce'); ?>
+                    <input type="submit" name="clear_cache" value="Alle Caches leeren" class="button">
+                </form>
+                <form method="post">
+                    <?php wp_nonce_field('nowscrobbling_reset_metrics', 'nowscrobbling_metrics_nonce'); ?>
+                    <input type="submit" name="reset_metrics" value="Metriken zurücksetzen" class="button">
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings grouped by topic -->
+        <div class="card" style="max-width: 100%; margin-bottom: 20px;">
+            <h2 class="title">Einstellungen</h2>
+            <form method="post" action="options.php">
+                <?php settings_fields('nowscrobbling-settings-group'); ?>
+
+                <details class="ns-block" <?php echo (!$lastfm_configured || !$trakt_configured) ? 'open' : ''; ?>>
+                    <summary>API-Zugangsdaten</summary>
+                    <div class="ns-grid">
+                        <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
+                            <h3 style="margin:0 0 6px 0;">Last.fm</h3>
+                            <table class="form-table" style="margin-top:0;">
+                                <tr><th>Benutzername</th><td><?php nowscrobbling_setting_callback('lastfm_user'); ?></td></tr>
+                                <tr><th>API Key</th><td><?php nowscrobbling_setting_callback('lastfm_api_key','password'); ?></td></tr>
+                                <tr><th>Status</th><td>
+                                    <?php 
+                                        $cred_hash = function_exists('nowscrobbling_get_service_cred_hash') ? nowscrobbling_get_service_cred_hash('lastfm') : '';
+                                        $last_success_map = get_option('ns_last_success', []);
+                                        $last_success = isset($last_success_map['lastfm'][$cred_hash]) ? $last_success_map['lastfm'][$cred_hash] : '';
+                                        $last_api = get_option('ns_last_api_test');
+                                        $api_ok = is_array($last_api) && isset($last_api['results']['lastfm']) && ($last_api['results']['lastfm']['status'] === 'success');
+                                        $color = 'err';
+                                        if ($last_success && $api_ok) { $color = 'ok'; }
+                                        elseif ($last_success && ! $api_ok) { $color = 'warn'; }
+                                        else { $color = 'err'; }
+                                        $label = $last_success ? ('Zuletzt erfolgreich: ' . $last_success) : 'Noch keine erfolgreiche Antwort';
+                                        echo '<span class="ns-badge ' . esc_attr($color) . '" title="Letzte erfolgreiche Antwort">' . esc_html($label) . '</span>';
+                                    ?>
+                                </td></tr>
+                            </table>
+                        </div>
+                        <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
+                            <h3 style="margin:0 0 6px 0;">Trakt</h3>
+                            <table class="form-table" style="margin-top:0;">
+                                <tr><th>Benutzername</th><td><?php nowscrobbling_setting_callback('trakt_user'); ?></td></tr>
+                                <tr><th>Client ID</th><td><?php nowscrobbling_setting_callback('trakt_client_id','password'); ?></td></tr>
+                                <tr><th>Status</th><td>
+                                    <?php 
+                                        $cred_hash = function_exists('nowscrobbling_get_service_cred_hash') ? nowscrobbling_get_service_cred_hash('trakt') : '';
+                                        $last_success_map = get_option('ns_last_success', []);
+                                        $last_success = isset($last_success_map['trakt'][$cred_hash]) ? $last_success_map['trakt'][$cred_hash] : '';
+                                        $last_api = get_option('ns_last_api_test');
+                                        $api_ok = is_array($last_api) && isset($last_api['results']['trakt']) && ($last_api['results']['trakt']['status'] === 'success');
+                                        $color = 'err';
+                                        if ($last_success && $api_ok) { $color = 'ok'; }
+                                        elseif ($last_success && ! $api_ok) { $color = 'warn'; }
+                                        else { $color = 'err'; }
+                                        $label = $last_success ? ('Zuletzt erfolgreich: ' . $last_success) : 'Noch keine erfolgreiche Antwort';
+                                        echo '<span class="ns-badge ' . esc_attr($color) . '" title="Letzte erfolgreiche Antwort">' . esc_html($label) . '</span>';
+                                    ?>
+                                </td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ns-toolbar" style="margin-top:8px;">
+                        <form method="post">
+                            <?php wp_nonce_field('nowscrobbling_test_apis', 'nowscrobbling_test_nonce'); ?>
+                            <input type="submit" name="test_apis" value="API-Verbindungen testen" class="button">
+                        </form>
+                    </div>
+                </details>
+
+                <details class="ns-block" open>
+                    <summary>Anzeige & Verhalten</summary>
+                    <table class="form-table">
+                        <tr><th>AJAX-Nachladen</th><td><em>Immer aktiv</em><br/><small>Lädt Shortcodes nach dem Seitenaufbau per JavaScript neu (schnellere Seite, „live“-Effekt). Ohne JS bleibt die serverseitige Ausgabe sichtbar.</small></td></tr>
+                        <tr><th>Rewatch-Zählung</th><td><em>Immer aktiv</em><br/><small>Ermittelt Wiederholungen. Anzeige nur, wenn im Shortcode gewünscht.</small></td></tr>
+                    </table>
+                </details>
+
+                <details class="ns-block" open>
+                    <summary>Polling & Performance</summary>
+                    <table class="form-table">
+                        <tr><th>Now-Playing Intervall (Sek.)</th><td><?php nowscrobbling_setting_callback('ns_nowplaying_interval','number',['min'=>5,'step'=>1,'default'=>20]); ?><br/><small>Wie oft Now-Playing Widgets neu abgefragt werden. Tipp: 15–30 Sekunden.</small></td></tr>
+                        <tr><th>Max. Intervall (Sek.)</th><td><?php nowscrobbling_setting_callback('ns_max_interval','number',['min'=>30,'step'=>5,'default'=>300]); ?><br/><small>Obergrenze für Backoff bei Fehlern.</small></td></tr>
+                        <tr><th>Backoff Multiplikator</th><td><?php nowscrobbling_setting_callback('ns_backoff_multiplier','number',['min'=>1,'step'=>0.1,'default'=>2]); ?><br/><small>Faktor, um das Intervall nach Fehlern zu vergrößern.</small></td></tr>
+                    </table>
+                </details>
+
+                <details class="ns-block">
+                    <summary>Datenmengen & Caching</summary>
+                    <div class="ns-grid">
+                        <div class="ns-col">
+                            <table class="form-table">
+                                <tr><th>Top-Titel</th><td><?php nowscrobbling_setting_callback('top_tracks_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Top-Listen (Last.fm).</small></td></tr>
+                                <tr><th>Top-Künstler</th><td><?php nowscrobbling_setting_callback('top_artists_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Top-Listen (Last.fm).</small></td></tr>
+                                <tr><th>Top-Alben</th><td><?php nowscrobbling_setting_callback('top_albums_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Top-Listen (Last.fm).</small></td></tr>
+                                <tr><th>Lieblingslieder</th><td><?php nowscrobbling_setting_callback('lovedtracks_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Loved-Listen (Last.fm).</small></td></tr>
+                            </table>
+                        </div>
+                        <div class="ns-col">
+                            <table class="form-table">
+                                <tr><th>Letzte Filme</th><td><?php nowscrobbling_setting_callback('last_movies_count','number',['min'=>1,'step'=>1,'default'=>3]); ?><br/><small>Anzahl in den Trakt-History-Listen.</small></td></tr>
+                                <tr><th>Letzte Serien</th><td><?php nowscrobbling_setting_callback('last_shows_count','number',['min'=>1,'step'=>1,'default'=>3]); ?><br/><small>Anzahl in den Trakt-History-Listen.</small></td></tr>
+                                <tr><th>Letzte Episoden</th><td><?php nowscrobbling_setting_callback('last_episodes_count','number',['min'=>1,'step'=>1,'default'=>3]); ?><br/><small>Anzahl in den Trakt-History-Listen.</small></td></tr>
+                            </table>
+                        </div>
+                        <div class="ns-col">
+                            <table class="form-table">
+                                <tr><th>Allgemeine Cache-Dauer (Min.)</th><td><?php nowscrobbling_setting_callback('cache_duration','number',['min'=>1,'step'=>1,'default'=>60]); ?><br/><small>Standard für nicht spezifizierte Caches.</small></td></tr>
+                                <tr><th>Last.fm Cache (Min.)</th><td><?php nowscrobbling_setting_callback('lastfm_cache_duration','number',['min'=>1,'step'=>1,'default'=>1]); ?><br/><small>Kürzere Intervalle für Now-Playing, längere für Tops/Historie.</small></td></tr>
+                                <tr><th>Trakt Cache (Min.)</th><td><?php nowscrobbling_setting_callback('trakt_cache_duration','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Kurz für Watching/History, länger für Stats.</small></td></tr>
+                                <tr><th>Last.fm Aktivitäten</th><td><?php nowscrobbling_setting_callback('lastfm_activity_limit','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Wie viele Scrobbles auf einmal geladen werden.</small></td></tr>
+                                <tr><th>Trakt Aktivitäten</th><td><?php nowscrobbling_setting_callback('trakt_activity_limit','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Wie viele Aktivitäten auf einmal geladen werden.</small></td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+
+                <?php submit_button('Änderungen speichern'); ?>
             </form>
-            <pre style="background: #fff; border: 1px solid #ccc; padding: 10px; max-height: 300px; overflow: auto;"><?php
-                $log = get_option('nowscrobbling_log', []);
-                if (!is_array($log)) {
-                    $log = [];
-                }
-                echo esc_html(implode("\n", $log));
-            ?></pre>
-        <?php endif; ?>
-        <h2>Verfügbare Shortcodes</h2>
-        <p>Du kannst diese Shortcodes verwenden, um Inhalte in Beiträgen, Seiten oder Widgets anzuzeigen:</p>
-        <h3>Last.fm</h3>
-        <ul>
-            <li><code>[nowscr_lastfm_indicator]</code> - Zeigt den aktuellen Status der Last.fm Aktivität an.</li>
-            <li><code>[nowscr_lastfm_history]</code> - Zeigt die letzten Scrobbles von Last.fm an.</li>
-            <li><code>[nowscr_lastfm_top_artists period="7day"]</code> - Zeigt die letzten Top-Künstler von Last.fm im gewählten Zeitraum an.</li>
-            <li><code>[nowscr_lastfm_top_albums period="7day"]</code> - Zeigt die letzten Top-Alben von Last.fm im gewählten Zeitraum an.</li>
-            <li><code>[nowscr_lastfm_top_tracks period="7day"]</code> - Zeigt die letzten Top-Titel von Last.fm im gewählten Zeitraum an.</li>
-            <li><code>[nowscr_lastfm_lovedtracks]</code> - Zeigt die letzten Lieblingslieder von Last.fm an.</li>
-            <li>Verfügbare Werte für <code>period</code>: <code>7day</code>, <code>1month</code>, <code>3month</code>, <code>6month</code>, <code>12month</code>, <code>overall</code>.</li>
-        </ul>
-        <h3>Trakt</h3>
-        <ul>
-            <li><code>[nowscr_trakt_indicator]</code> - Zeigt den aktuellen Status der Trakt Aktivität an.</li>
-            <li><code>[nowscr_trakt_history show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Aktivitäten von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_movie show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Filme von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_show show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Serien von Trakt an.</li>
-            <li><code>[nowscr_trakt_last_episode show_year="true" show_rating="true" show_rewatch="true"]</code> - Zeigt die letzten Episoden von Trakt an.</li>
-            <li>Verfügbare Werte für <code>show_year</code>: <code>true</code> oder <code>false</code>.</li>
-            <li>Verfügbare Werte für <code>show_rating</code>: <code>true</code> oder <code>false</code>.</li>
-            <li>Verfügbare Werte für <code>show_rewatch</code>: <code>true</code> oder <code>false</code>.</li>
-        </ul>
-        <h2>Vorschau der Daten</h2>
-        <div id="nowscrobbling-preview">
-            <h3>Last.fm</h3>
-            <h4>Status (Indicator)</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_indicator]'); ?>
-            <h4>Letzte Scrobbles (History)</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_history]'); ?>
-            <h4>Letzte Top-Künstler</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_top_artists period="7day"]'); ?>
-            <h4>Letzte Top-Alben</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_top_albums period="7day"]'); ?>
-            <h4>Letzte Top-Titel</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_top_tracks period="7day"]'); ?>
-            <h4>Letzte Lieblingslieder</h4>
-            <?php echo do_shortcode('[nowscr_lastfm_lovedtracks]'); ?>
-            <h3>Trakt</h3>
-            <h4>Status (Indicator)</h4>
-            <?php echo do_shortcode('[nowscr_trakt_indicator]'); ?>
-            <h4>Letzte Scrobbles (History)</h4>
-            <?php echo do_shortcode('[nowscr_trakt_history show_year="true" show_rating="true" show_rewatch="true"]'); ?>
-            <h4>Letzte Filme</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_movie show_year="true" show_rating="true" show_rewatch="true"]'); ?>
-            <h4>Letzte Serien</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_show show_year="true" show_rating="true" show_rewatch="true"]'); ?>
-            <h4>Letzte Episoden</h4>
-            <?php echo do_shortcode('[nowscr_trakt_last_episode show_year="true" show_rating="true" show_rewatch="true"]'); ?>
+        </div>
+
+        
+
+        <!-- Metriken -->
+        <div class="card" style="max-width: 100%; margin-bottom: 20px;">
+            <details class="ns-block">
+                <summary>Metriken (Erklärung & Werte)</summary>
+                <p style="margin:6px 0 12px; color:#555;">
+                    Anfragen: Anzahl API-Requests · Fehler: HTTP 4xx/5xx/Netzwerk · ETag: 304/Unverändert · Cache: WordPress-Transient · Fallback: Langzeit-Cache nach Fehler · Letzte Antwort: Dauer/Status letzter Request
+                </p>
+                <table class="form-table">
+                    <?php $metrics = get_option('ns_metrics', []); 
+                    $services = ['lastfm' => 'Last.fm', 'trakt' => 'Trakt', 'generic' => 'Sonstige'];
+                    foreach ($services as $key => $label):
+                        $m = isset($metrics[$key]) && is_array($metrics[$key]) ? $metrics[$key] : [];
+                        $tr = (int) ($m['total_requests'] ?? 0);
+                        $te = (int) ($m['total_errors'] ?? 0);
+                        $eh = (int) ($m['etag_hits'] ?? 0);
+                        $ch = (int) ($m['cache_hits'] ?? 0);
+                        $fh = (int) ($m['fallback_hits'] ?? 0);
+                        $ms = (int) ($m['last_ms'] ?? 0);
+                        $st = (int) ($m['last_status'] ?? 0);
+                    ?>
+                    <tr>
+                        <th><?php echo esc_html($label); ?></th>
+                        <td>
+                            <span class="ns-badge ok" style="margin-right:6px;">Anfragen: <?php echo $tr; ?></span>
+                            <span class="ns-badge <?php echo $te ? 'err' : 'ok'; ?>" style="margin-right:6px;">Fehler: <?php echo $te; ?></span>
+                            <span class="ns-badge ok" style="margin-right:6px;" title="304/Unverändert dank ETag">ETag: <?php echo $eh; ?></span>
+                            <span class="ns-badge ok" style="margin-right:6px;" title="Transient-Cache-Treffer">Cache: <?php echo $ch; ?></span>
+                            <span class="ns-badge warn" style="margin-right:6px;" title="Langzeit-Cache nach Fehler">Fallback: <?php echo $fh; ?></span>
+                            <span>Letzte Antwort: <strong><?php echo $ms; ?>ms</strong> · HTTP: <strong><?php echo $st; ?></strong></span>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+            </details>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="card" style="max-width: 100%; margin-bottom: 20px;">
+            <details class="ns-block" open>
+                <summary>Debug-Log</summary>
+                <div style="max-height:300px;overflow:auto;font-size:12px;">
+                <?php
+                    $log = get_option('nowscrobbling_log', []);
+                    if (!is_array($log)) { $log = []; }
+                    $lines = array_reverse(array_slice($log, -100)); // latest first
+                    foreach ($lines as $entry) {
+                        // Expect format: [YYYY-MM-DD HH:MM:SS] message
+                        $ts = '';
+                        $msg = $entry;
+                        if (preg_match('/^\[(.*?)\]\s*(.*)$/', $entry, $m)) {
+                            $ts = $m[1];
+                            $msg = $m[2];
+                        }
+                        $status = 'Okay';
+                        $color = '#0a7f3f';
+                        if (stripos($msg, 'error') !== false || stripos($msg, 'fehl') !== false || stripos($msg, 'failed') !== false) { $status = 'Fehler'; $color = '#a10b0b'; }
+                        elseif (stripos($msg, 'warn') !== false || stripos($msg, 'cooldown') !== false) { $status = 'Warnung'; $color = '#9a6a00'; }
+                        $line = trim(($ts ? '[' . $ts . '] ' : '') . $status . ': ' . $msg);
+                        echo '<div style="margin:2px 0;">';
+                        echo '<span style="font-family:monospace;white-space:pre-wrap;color:' . esc_attr($color) . ';">' . esc_html($line) . '</span>';
+                        echo '</div>';
+                    }
+                ?>
+                </div>
+                <form method="post" style="margin: 10px 0;">
+                    <?php wp_nonce_field('nowscrobbling_clear_log', 'nowscrobbling_log_nonce'); ?>
+                    <input type="submit" name="clear_log" value="Log leeren" class="button">
+                </form>
+            </details>
+        </div>
+        
+
+        
+
+        <!-- Preview Section -->
+        <div class="card" style="max-width: 100%;">
+            <h2 class="title">Vorschau der Daten</h2>
+            <div id="nowscrobbling-preview" style="margin-top:1em;">
+                    <?php
+                        $shortcodes = [
+                            'Last.fm' => [
+                                ['[nowscr_lastfm_indicator]', 'Indikator (Now Playing/Zuletzt)', 'lastfm', ['[nowscr_lastfm_indicator]']],
+                                ['[nowscr_lastfm_history]', 'Letzte Scrobbles', 'lastfm', ['[nowscr_lastfm_history max_length="30"]']],
+                                ['[nowscr_lastfm_top_artists]', 'Top-Künstler', 'lastfm', [
+                                    '[nowscr_lastfm_top_artists]',
+                                    '[nowscr_lastfm_top_artists period="overall"]',
+                                    '[nowscr_lastfm_top_artists period="7day" max_length="15"]'
+                                ]],
+                                ['[nowscr_lastfm_top_albums]', 'Top-Alben', 'lastfm', [
+                                    '[nowscr_lastfm_top_albums]',
+                                    '[nowscr_lastfm_top_albums period="overall"]',
+                                    '[nowscr_lastfm_top_albums period="7day" max_length="45"]'
+                                ]],
+                                ['[nowscr_lastfm_top_tracks]', 'Top-Titel', 'lastfm', [
+                                    '[nowscr_lastfm_top_tracks]',
+                                    '[nowscr_lastfm_top_tracks period="overall"]',
+                                    '[nowscr_lastfm_top_tracks period="7day" max_length="45"]'
+                                ]],
+                                ['[nowscr_lastfm_lovedtracks]', 'Lieblingslieder', 'lastfm', ['[nowscr_lastfm_lovedtracks max_length="30"]']],
+                            ],
+                            'Trakt' => [
+                                ['[nowscr_trakt_indicator]', 'Indikator (Watching/Zuletzt)', 'trakt', ['[nowscr_trakt_indicator]']],
+                                ['[nowscr_trakt_history]', 'History', 'trakt', [
+                                    '[nowscr_trakt_history]',
+                                    '[nowscr_trakt_history show_year="true"]',
+                                    '[nowscr_trakt_history show_year="true" show_rating="true"]',
+                                    '[nowscr_trakt_history show_year="true" show_rating="true" show_rewatch="true"]'
+                                ]],
+                                ['[nowscr_trakt_last_movie]', 'Letzte Filme', 'trakt', [
+                                    '[nowscr_trakt_last_movie]',
+                                    '[nowscr_trakt_last_movie show_year="true"]',
+                                    '[nowscr_trakt_last_movie show_year="true" show_rating="true"]',
+                                    '[nowscr_trakt_last_movie show_year="true" show_rating="true" show_rewatch="true"]'
+                                ]],
+                                ['[nowscr_trakt_last_show]', 'Letzte Serien', 'trakt', [
+                                    '[nowscr_trakt_last_show]',
+                                    '[nowscr_trakt_last_show show_year="true"]',
+                                    '[nowscr_trakt_last_show show_year="true" show_rating="true"]',
+                                    '[nowscr_trakt_last_show show_year="true" show_rating="true" show_rewatch="true"]'
+                                ]],
+                                ['[nowscr_trakt_last_episode]', 'Letzte Episoden', 'trakt', [
+                                    '[nowscr_trakt_last_episode]',
+                                    '[nowscr_trakt_last_episode show_year="true"]',
+                                    '[nowscr_trakt_last_episode show_year="true" show_rating="true"]',
+                                    '[nowscr_trakt_last_episode show_year="true" show_rating="true" show_rewatch="true"]'
+                                ]],
+                            ],
+                        ];
+                    function ns_render_shortcode_row($code, $label, $service, $alts = []){
+                            $html = do_shortcode($code);
+                            $src = isset($GLOBALS['nowscrobbling_last_source']) ? $GLOBALS['nowscrobbling_last_source'] : 'unbekannt';
+                            $key = isset($GLOBALS['nowscrobbling_last_source_key']) ? $GLOBALS['nowscrobbling_last_source_key'] : '';
+                            $meta = isset($GLOBALS['nowscrobbling_last_meta']) && is_array($GLOBALS['nowscrobbling_last_meta']) ? $GLOBALS['nowscrobbling_last_meta'] : [];
+                            $badge_class = 'warn';
+                            if ($src === 'cache') $badge_class = 'cache';
+                            if ($src === 'fresh') $badge_class = 'ok';
+                            if ($src === 'fallback') $badge_class = 'warn';
+                            if ($src === 'miss') $badge_class = 'err';
+                        $src_display = ucfirst($src);
+                        $src_badge = ($src === 'fresh') ? 'ok' : (($src === 'cache') ? 'cache' : (($src === 'miss') ? 'err' : 'warn'));
+                        $minimal = preg_replace('/\s+period="[^"]*"/','',$code);
+                        $minimal = preg_replace('/\s+max_length="[^"]*"/','',$minimal);
+
+                        // Build diagnostic explanation
+                        $service_key = isset($meta['service']) ? $meta['service'] : ( $service ?: 'generic' );
+                        $cooldown_active = function_exists('nowscrobbling_should_cooldown') ? (bool) nowscrobbling_should_cooldown($service_key) : false;
+                        $expires_at = isset($meta['expires_at']) ? intval($meta['expires_at']) : 0;
+                        $saved_at   = isset($meta['saved_at']) ? intval($meta['saved_at']) : 0;
+                        $ttl        = isset($meta['ttl']) ? intval($meta['ttl']) : 0;
+                        $fallback_key = isset($meta['fallback_key']) ? (string) $meta['fallback_key'] : '';
+                        $fallback_exists = !empty($meta['fallback_exists']);
+                        $fallback_saved_at = isset($meta['fallback_saved_at']) ? intval($meta['fallback_saved_at']) : 0;
+                        $fallback_expires_at = isset($meta['fallback_expires_at']) ? intval($meta['fallback_expires_at']) : 0;
+
+                        $reason = '—';
+                        if ($src === 'cache') {
+                            if ($expires_at) {
+                                $reason = 'Cache-Hit (noch gültig bis ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $expires_at ) ) . ')';
+                            } else {
+                                $reason = 'Cache-Hit (noch gültig)';
+                            }
+                        } elseif ($src === 'fresh') {
+                            $reason = 'Neu geladen (Cache leer/abgelaufen oder erzwungen)';
+                        } elseif ($src === 'fallback') {
+                            $reason = 'Fallback-Daten genutzt (Primärabruf fehlgeschlagen)';
+                        } elseif ($src === 'miss') {
+                            $reason = 'Keine Daten verfügbar';
+                        }
+
+                        // Optional metrics per service
+                        $metrics = get_option('ns_metrics', []);
+                        $m = isset($metrics[$service_key]) && is_array($metrics[$service_key]) ? $metrics[$service_key] : [];
+                        $last_ms = isset($m['last_ms']) ? intval($m['last_ms']) : 0;
+                        $last_status = isset($m['last_status']) ? intval($m['last_status']) : 0;
+
+                        echo '<tr>';
+                        echo '<td class="ns-col-shortcode"><div style="font-weight:600;margin-bottom:4px;">' . esc_html($label) . '</div><code class="ns-copy" onclick="navigator.clipboard.writeText(\'' . esc_js($minimal) . '\'); this.innerText=\'Kopiert!\'; setTimeout(()=>this.innerText=\'' . esc_js($minimal) . '\', 1200);" title="Klicken zum Kopieren" style="display:inline-block;background:#f6f7f7;border:1px solid #ccd0d4;padding:4px 6px;border-radius:4px;">' . esc_html($minimal) . '</code></td>';
+                        echo '<td class="ns-col-output">' . $html . '</td>';
+                        echo '<td class="ns-col-source">';
+                        echo '<div style="display:flex;flex-direction:column;gap:4px;">';
+                        echo '<div><span class="ns-badge ' . esc_attr($src_badge) . '" title="Quelle der Daten">' . esc_html($src_display) . '</span> <span style="font-size:11px;color:#555;">' . esc_html($reason) . '</span></div>';
+                        echo '<details class="ns-block" style="margin:0"><summary class="ns-alt">Details</summary><div class="ns-alt">';
+                        if ($key) {
+                            echo '<div><strong>Cache-Key</strong>: <code>' . esc_html($key) . '</code></div>';
+                        }
+                        if ($saved_at) {
+                            echo '<div><strong>Gespeichert</strong>: ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $saved_at ) ) . '</div>';
+                        }
+                        if ($expires_at) {
+                            echo '<div><strong>Läuft ab</strong>: ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $expires_at ) ) . '</div>';
+                        }
+                        if ($ttl) {
+                            echo '<div><strong>TTL</strong>: ' . esc_html( round($ttl/60) ) . ' Min.</div>';
+                        }
+                        if ($fallback_key) {
+                            echo '<div><strong>Fallback-Key</strong>: <code>' . esc_html($fallback_key) . '</code>' . ($fallback_exists ? ' <span class="ns-badge warn">vorhanden</span>' : '') . '</div>';
+                        }
+                        if ($fallback_saved_at) {
+                            echo '<div><strong>Fallback gespeichert</strong>: ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $fallback_saved_at ) ) . '</div>';
+                        }
+                        if ($fallback_expires_at) {
+                            echo '<div><strong>Fallback läuft ab</strong>: ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $fallback_expires_at ) ) . '</div>';
+                        }
+                        echo '<div><strong>Service</strong>: ' . esc_html( ucfirst($service_key) ) . '</div>';
+                        echo '<div><strong>Cooldown</strong>: ' . ( $cooldown_active ? '<span class="ns-badge warn">aktiv</span>' : '<span class="ns-badge ok">nein</span>' ) . '</div>';
+                        if ($last_ms || $last_status) {
+                            echo '<div><strong>Letzte Antwort</strong>: ' . esc_html($last_ms) . 'ms · HTTP ' . esc_html($last_status) . '</div>';
+                        }
+                        echo '</div></details>';
+                        echo '</div>';
+                        echo '</td>';
+                        echo '</tr>';
+                        if (!empty($alts) && count($alts) > 1) {
+                            echo '<tr><td colspan="3" style="padding-top:0;">';
+                            echo '<details class="ns-block"><summary class="ns-alt">Alternative Optionen</summary><div class="ns-alt">';
+                            $first = true;
+                            foreach ($alts as $alt) {
+                                if (!$first) echo ' · ';
+                                echo '<code class="ns-copy" onclick="navigator.clipboard.writeText(\'' . esc_js($alt) . '\'); this.innerText=\'Kopiert!\'; setTimeout(()=>this.innerText=\'' . esc_js($alt) . '\', 1200);" title="Klicken zum Kopieren">' . esc_html($alt) . '</code>';
+                                $first = false;
+                            }
+                            echo '</div></details>';
+                            echo '</td></tr>';
+                        }
+                        }
+                    ?>
+                <h3>Last.fm</h3>
+                <table class="ns-preview">
+                    <thead><tr><th class="ns-col-shortcode">Shortcode</th><th class="ns-col-output">Ausgabe</th><th class="ns-col-source">Quelle</th></tr></thead>
+                    <tbody>
+                        <?php foreach ($shortcodes['Last.fm'] as $row) { ns_render_shortcode_row($row[0], $row[1], $row[2], $row[3] ?? []); } ?>
+                    </tbody>
+                </table>
+
+                <h3>Trakt</h3>
+                <table class="ns-preview">
+                    <thead><tr><th class="ns-col-shortcode">Shortcode</th><th class="ns-col-output">Ausgabe</th><th class="ns-col-source">Quelle</th></tr></thead>
+                    <tbody>
+                        <?php foreach ($shortcodes['Trakt'] as $row) { ns_render_shortcode_row($row[0], $row[1], $row[2], $row[3] ?? []); } ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <?php
 }
 
+/**
+ * Test API connections
+ */
+function nowscrobbling_test_api_connections() {
+    $results = [];
+    
+    // Test Last.fm
+    if (get_option('lastfm_api_key') && get_option('lastfm_user')) {
+        try {
+            // Test mit der korrekten Method-Syntax
+            $test_data = nowscrobbling_fetch_lastfm_data('getrecenttracks', ['limit' => 1]);
+            if ($test_data && !isset($test_data['error'])) {
+                $results['lastfm'] = ['status' => 'success', 'message' => 'Last.fm API funktioniert korrekt'];
+            } else {
+                $error_msg = isset($test_data['message']) ? $test_data['message'] : 'Unbekannter Fehler';
+                $results['lastfm'] = ['status' => 'error', 'message' => 'Last.fm API Fehler: ' . $error_msg];
+            }
+        } catch (Exception $e) {
+            $results['lastfm'] = ['status' => 'error', 'message' => 'Last.fm API Exception: ' . $e->getMessage()];
+        }
+    } else {
+        $results['lastfm'] = ['status' => 'warning', 'message' => 'Last.fm nicht konfiguriert'];
+    }
+    
+    // Test Trakt
+    if (get_option('trakt_client_id') && get_option('trakt_user')) {
+        try {
+            $user = get_option('trakt_user');
+            // Test mit einem einfacheren Endpoint
+            // Use a simple endpoint with a low error surface; trakt profile can require auth.
+            $test_data = nowscrobbling_fetch_trakt_data("users/$user/stats");
+            if (is_array($test_data)) {
+                $results['trakt'] = ['status' => 'success', 'message' => 'Trakt API funktioniert korrekt'];
+            } else {
+                $error_msg = is_array($test_data) && isset($test_data['error']) ? $test_data['error'] : 'Keine Antwort erhalten';
+                $results['trakt'] = ['status' => 'error', 'message' => 'Trakt API Fehler: ' . $error_msg];
+            }
+        } catch (Exception $e) {
+            $results['trakt'] = ['status' => 'error', 'message' => 'Trakt API Exception: ' . $e->getMessage()];
+        }
+    } else {
+        $results['trakt'] = ['status' => 'warning', 'message' => 'Trakt nicht konfiguriert'];
+    }
+    
+    return $results;
+}
 ?>

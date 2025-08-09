@@ -1,0 +1,17 @@
+# Files and folders Cursor should ignore for indexing/context
+**/.git/**
+**/.DS_Store
+**/*.zip
+**/*.log
+**/*.min.*
+**/node_modules/**
+
+# Large/binary assets
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.svg
+
+# Compiled locales (keep .pot)
+**/languages/*.mo

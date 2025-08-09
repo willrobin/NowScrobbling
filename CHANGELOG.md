@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.3.0] - 2025-08-09
+
+### Highlights
+- Server-Side Rendering (SSR) für initiale Ausgabe, danach schlankes AJAX-Nachladen
+- Bedingtes Laden von Assets nur auf Seiten mit Shortcodes
+- Verbesserte Transient-Strategie inkl. Fallback-Caches und ETag-Unterstützung
+- Hintergrund-Aktualisierung via WP-Cron (alle 5 Minuten)
+- Admin-Seite mit Status, Metriken, Cache-Tools und API-Tests
+
+### Verbesserungen
+- Robustere Sanitization der Einstellungen und AJAX-Parameter
+- Optimierte Hash-basierte DOM-Updates ohne Flackern
+- Adaptive Polling-Intervalle mit Backoff bei Fehlern
+
+### Sonstiges
+- Konsolidierung auf Branch `main`
+- Dokumentation aktualisiert
+
 ## [1.2.5] - 2024-10-20
 
 ### Features
