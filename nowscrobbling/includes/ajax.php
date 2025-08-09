@@ -48,7 +48,11 @@ function nowscrobbling_render_shortcode_callback() {
     }
 
     // Check if we should force refresh (first load after SSR, debugging or manual refresh)
-    $force_refresh = isset($_POST['force_refresh']) && wp_validate_boolean($_POST['force_refresh']);
+    $force_refresh = false;
+    if ( isset($_POST['force_refresh']) ) {
+        $raw = wp_unslash( (string) $_POST['force_refresh'] );
+        $force_refresh = filter_var( $raw, FILTER_VALIDATE_BOOLEAN );
+    }
     
     // Get current hash if provided
     $current_hash = isset($_POST['current_hash']) ? sanitize_text_field($_POST['current_hash']) : '';

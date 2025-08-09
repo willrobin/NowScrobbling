@@ -44,7 +44,22 @@ function nowscrobbling_register_settings()
     }
 
     // Booleans
-    // Rewatch and AJAX are always enabled; no settings needed
+    register_setting('nowscrobbling-settings-group', 'nowscrobbling_debug_log', [
+        'type' => 'boolean',
+        'sanitize_callback' => function( $value ) {
+            $bool = filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+            return $bool ? 1 : 0;
+        },
+        'default' => 0,
+    ]);
+    register_setting('nowscrobbling-settings-group', 'ns_enable_rewatch', [
+        'type' => 'boolean',
+        'sanitize_callback' => function( $value ) {
+            $bool = filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+            return $bool ? 1 : 0;
+        },
+        'default' => 0,
+    ]);
 
     // Debug log content is an array of lines; keep as array or reset to empty array
     register_setting('nowscrobbling-settings-group', 'nowscrobbling_log', [

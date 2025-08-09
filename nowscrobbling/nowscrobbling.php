@@ -3,7 +3,7 @@
  * Plugin Name:         NowScrobbling
  * Plugin URI:          https://github.com/willrobin/NowScrobbling
  * Description:         NowScrobbling is a WordPress plugin designed to manage API settings and display recent activities for last.fm and trakt.tv on your site. It enables users to show their latest scrobbles through shortcodes.
- * Version:             1.3.1
+ * Version:             1.3.1.1
  * File: nowscrobbling/nowscrobbling.php
  * Requires at least:   5.0
  * Requires PHP:        7.0
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // -----------------------------------------------------------------------------
 if ( ! defined( 'NOWSCROBBLING_VERSION' ) ) {
-    define( 'NOWSCROBBLING_VERSION', '1.3.1' );
+    define( 'NOWSCROBBLING_VERSION', '1.3.1.1' );
 }
 if ( ! defined( 'NOWSCROBBLING_FILE' ) ) {
 	define( 'NOWSCROBBLING_FILE', __FILE__ );
@@ -213,11 +213,11 @@ function nowscrobbling_activate() {
 		'last_episodes_count'      => 3,
 		'lastfm_activity_limit'    => 5,
 		'trakt_activity_limit'     => 5,
-        'nowscrobbling_debug_log'  => 1,
+		'nowscrobbling_debug_log'  => 0,
         'ns_nowplaying_interval'   => 20,
         'ns_max_interval'          => 300,
         'ns_backoff_multiplier'    => 2,
-        'ns_enable_rewatch'        => 1,
+        'ns_enable_rewatch'        => 0,
 	];
 	
 	foreach ( $defaults as $key => $value ) {
@@ -232,11 +232,11 @@ function nowscrobbling_activate() {
  * Keeps API credentials intact while normalizing feature flags.
  */
 add_action( 'admin_init', function(){
+    // Normalize numeric options only; never override user-set booleans here
     $defaults = [
         'ns_nowplaying_interval'    => 20,
         'ns_max_interval'           => 300,
-        'ns_backoff_multiplier'     => 2,
-        'ns_enable_rewatch'         => 1,
+        'ns_backoff_multiplier'     => 2.0,
         'cache_duration'            => 60,
         'lastfm_cache_duration'     => 1,
         'trakt_cache_duration'      => 5,
@@ -250,33 +250,32 @@ add_action( 'admin_init', function(){
         'lastfm_activity_limit'     => 5,
         'trakt_activity_limit'      => 5,
     ];
-    // Do not override credentials
-    $credentials = [ 'lastfm_api_key', 'lastfm_user', 'trakt_client_id', 'trakt_user' ];
-    foreach ( $defaults as $k => $v ) {
-        if ( in_array( $k, $credentials, true ) ) { continue; }
-        // Enforce default if option exists but deviates from default
-        $current = get_option( $k );
-        if ( $current === false || $current === '' || $current === null ) {
-            update_option( $k, $v );
+
+    foreach ( $defaults as $key => $def ) {
+        $current = get_option( $key );
+        // If option missing, seed with default
+        if ( $current === false ) {
+            update_option( $key, $def );
             continue;
         }
-        // Coerce types and invalid values back to default ranges
-        if ( is_int( $v ) ) {
-            $c = absint( $current );
-            if ( $k === 'ns_nowplaying_interval' && $c < 5 ) $c = 20;
-            if ( $k === 'ns_max_interval' && $c < 30 ) $c = 300;
-            if ( strpos($k, '_count') !== false && $c < 1 ) $c = $v;
-            if ( strpos($k, '_duration') !== false && $c < 1 ) $c = $v;
-            if ( $c !== (int) $current ) update_option( $k, $c );
-        } elseif ( is_float( $v ) ) {
-            $c = (float) $current;
-            if ( $k === 'ns_backoff_multiplier' && $c < 1 ) $c = 2.0;
-            if ( $c !== (float) $current ) update_option( $k, $c );
-        } else {
-            // booleans stored as 0/1
-            $c = (int) !!$current;
-            if ( $c !== (int) !!$v ) update_option( $k, $v );
+        // Coerce ranges for integers
+        if ( is_int( $def ) ) {
+            $val = absint( $current );
+            if ( $key === 'ns_nowplaying_interval' && $val < 5 ) { $val = 20; }
+            if ( $key === 'ns_max_interval' && $val < 30 ) { $val = 300; }
+            if ( strpos( $key, '_count' ) !== false && $val < 1 ) { $val = $def; }
+            if ( strpos( $key, '_duration' ) !== false && $val < 1 ) { $val = $def; }
+            if ( $val !== (int) $current ) { update_option( $key, $val ); }
+            continue;
         }
+        // Coerce ranges for floats
+        if ( is_float( $def ) ) {
+            $val = (float) $current;
+            if ( $key === 'ns_backoff_multiplier' && $val < 1 ) { $val = 2.0; }
+            if ( $val !== (float) $current ) { update_option( $key, $val ); }
+            continue;
+        }
+        // Do not normalize booleans here to avoid overriding user preferences
     }
 });
 

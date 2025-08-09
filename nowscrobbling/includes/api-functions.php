@@ -182,7 +182,10 @@ function nowscrobbling_set_cooldown( $service, $seconds = 60 ) {
  * @param string $message The message to log.
  */
 function nowscrobbling_log($message) {
-    // Always log for developer diagnostics
+    // Log only when enabled to avoid option bloat in production
+    if ( ! get_option('nowscrobbling_debug_log', 0) ) {
+        return;
+    }
     $log = get_option('nowscrobbling_log', []);
     if (!is_array($log)) { $log = []; }
     $log[] = '[' . current_time('mysql') . '] ' . $message;
@@ -297,8 +300,7 @@ function nowscrobbling_fetch_api_data($url, $headers = [], $args = [], $cache_ke
 
     // Treat 204 as empty success for all services
     if ($response_code === 204) {
-        nowscrobbling_metrics_update( $service, 'total_requests' );
-        nowscrobbling_metrics_update( $service, [ 'last_ms' => (int) round( ( microtime(true) - $start ) * 1000 ), 'last_status' => (int) $response_code ] );
+        // Return empty but don't double-count requests; last_ms/status already set above
         return [];
     }
 
@@ -366,9 +368,6 @@ function nowscrobbling_fetch_lastfm_data($method, $params = [])
     // Use ETag per URL to support 304 Not Modified
     $etag_key = 'lastfm:' . substr(md5($url), 0, 24);
     $data = nowscrobbling_fetch_api_data($url, [], [], $etag_key);
-    if ($data === null) {
-        nowscrobbling_set_cooldown('lastfm', 60);
-    }
     return $data;
 }
 
@@ -471,9 +470,6 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
                 // Provide stable ETag key per request
                 $etag_key = ($cache_key ? $cache_key : 'trakt') . ':' . substr(md5($url), 0, 24);
                 $data = nowscrobbling_fetch_api_data($url, $headers, [], $etag_key);
-                if ($data === null) {
-                    nowscrobbling_set_cooldown('trakt', 60);
-                }
                 return $data;
             },
             nowscrobbling_cache_minutes('trakt') * MINUTE_IN_SECONDS
@@ -490,9 +486,6 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
     $url = NOWSCROBBLING_TRAKT_API_URL . ltrim($path, '/') . ($query ? "?$query" : '');
     $etag_key = ($cache_key ? $cache_key : 'trakt') . ':' . substr(md5($url), 0, 24);
     $data = nowscrobbling_fetch_api_data($url, $headers, [], $etag_key);
-    if ($data === null) {
-        nowscrobbling_set_cooldown('trakt', 60);
-    }
     return $data;
 }
 

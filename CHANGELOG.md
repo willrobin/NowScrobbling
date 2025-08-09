@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.1.1] - 2025-08-09
+
+### Fixes
+- **api**: Logging an Debug-Option gekoppelt, um Optionsgröße zu reduzieren
+- **api**: Doppeltes Request-Zählen bei HTTP 204 entfernt
+- **ajax**: Boolean-Handling ohne `wp_validate_boolean` (Kompatibilität WP 5.0)
+
+### Changes
+- **core**: Standardwerte für `nowscrobbling_debug_log` und `ns_enable_rewatch` auf 0 gesetzt
+- **core**: Version auf 1.3.1.1 angehoben
+
 ## [1.3.0] - 2025-08-09
 
 ### Highlights
