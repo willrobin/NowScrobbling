@@ -489,68 +489,91 @@ function nowscr_trakt_last_movie_shortcode($atts) {
         'show_rating' => false,
         'limit' => '',
     ], $atts);
+
     $configured_default = (int) get_option('last_movies_count', 3);
     $limit = $atts['limit'] !== '' ? max(1, (int) $atts['limit']) : $configured_default;
 
-    $cache_key = nowscrobbling_build_cache_key('my_trakt_tv_movies_with_ratings', ['limit' => $limit]);
-    $movies = nowscrobbling_get_or_set_transient($cache_key, function () use ($limit) {
-        $user = get_option('trakt_user');
-        return [
-            'movies' => nowscrobbling_fetch_trakt_data("users/$user/history/movies", ['limit' => $limit], 'trakt_last_movie'),
-            'ratings' => nowscrobbling_fetch_trakt_data("users/$user/ratings/movies", [], 'trakt_last_movie')
-        ];
-    }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
+    $user = (string) get_option('trakt_user');
 
-    if (!$movies['movies']) {
-        return '<em>' . esc_html__('Keine Filme gefunden.', 'nowscrobbling') . '</em>';
-    }
-
-    $ratings = [];
-    if (isset($movies['ratings']) && is_array($movies['ratings'])) {
-        foreach ($movies['ratings'] as $rating) {
-            if (isset($rating['movie']['ids']['trakt'])) {
-                $ratings[$rating['movie']['ids']['trakt']] = $rating['rating'];
-            }
+    // Fetch movies with dedicated cache key to avoid overwriting with empties
+    $movies_key = nowscrobbling_build_cache_key('trakt_last_movies', ['limit' => $limit]);
+    $movies = nowscrobbling_fetch_trakt_data("users/$user/history/movies", ['limit' => $limit], 'trakt_last_movies');
+    if (!is_array($movies) || count($movies) === 0) {
+        // Try fallback data to avoid empty UI
+        $fallback_movies = get_transient($movies_key . '_fallback');
+        if (is_array($fallback_movies) && count($fallback_movies) > 0) {
+            $movies = $fallback_movies;
         }
     }
 
-    // Initialize an array to store rewatch counts (optional)
+    // Ratings map (cached) to avoid an extra full ratings request each render
+    $ratings_map = [];
+    if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
+        $ratings_map = nowscrobbling_get_trakt_ratings_map('movies');
+    }
+
+    // Optional: precompute rewatch counts only when explicitly requested
     $enable_rewatch = (bool) get_option('ns_enable_rewatch', 0);
+    $compute_rewatch = $enable_rewatch && filter_var($atts['show_rewatch'], FILTER_VALIDATE_BOOLEAN);
     $rewatch_counts = [];
-    if ($enable_rewatch) {
-        foreach ($movies['movies'] as $movie) {
-            $id = $movie['movie']['ids']['trakt'];
-            $val = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/movies/{$id}");
-            $rewatch_counts[$id] = is_array($val) ? $val : [];
+    if ($compute_rewatch && is_array($movies)) {
+        foreach ($movies as $movie) {
+            if (!isset($movie['movie']['ids']['trakt'])) { continue; }
+            $id = (int) $movie['movie']['ids']['trakt'];
+            $val = nowscrobbling_get_rewatch_count($id, 'movies');
+            $rewatch_counts[$id] = (int) $val;
         }
     }
 
-    // Track the position in the history
+    // Track the position in the history to compute per-item rewatch delta
     $history_positions = [];
 
-    // Format the output
-    $output = nowscrobbling_generate_shortcode_output(array_slice($movies['movies'], 0, $limit), function ($movie) use ($ratings, $rewatch_counts, &$history_positions, $atts, $enable_rewatch) {
-        $id = $movie['movie']['ids']['trakt'];
-        $rating = $atts['show_rating'] ? ($ratings[$id] ?? '') : '';
-        $rating_text = $rating ? "{$rating}" : '';
-        $rewatch_total = isset($rewatch_counts[$id]) && is_array($rewatch_counts[$id]) ? count($rewatch_counts[$id]) : 0;
-        $title = $movie['movie']['title'];
-        $year = $atts['show_year'] ? "{$movie['movie']['year']}" : '';
-        $url = "https://trakt.tv/movies/{$movie['movie']['ids']['slug']}";
+    // Render output; if no data, reuse last rendered HTML to avoid empty output
+    $output = '';
+    if (is_array($movies) && count($movies) > 0) {
+        $output = nowscrobbling_generate_shortcode_output(array_slice($movies, 0, $limit), function ($movie) use ($ratings_map, $rewatch_counts, &$history_positions, $atts, $compute_rewatch) {
+            $id = $movie['movie']['ids']['trakt'];
+            $rating_val = '';
+            if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
+                $rating_val = isset($ratings_map[(int)$id]) ? (string) $ratings_map[(int)$id] : '';
+            }
+            $rewatch_text = '';
+            if ($compute_rewatch) {
+                if (!isset($history_positions[$id])) { $history_positions[$id] = 0; }
+                $total = isset($rewatch_counts[(int)$id]) ? (int)$rewatch_counts[(int)$id] : 0;
+                $rewatch = $total - $history_positions[$id];
+                $rewatch_text = $rewatch > 1 ? (string)$rewatch : '';
+                $history_positions[$id]++;
+            }
 
-        // Adjust the rewatch count based on the position in the history
-        if (!isset($history_positions[$id])) {
-            $history_positions[$id] = 0;
-        }
-        $rewatch = ($enable_rewatch && $atts['show_rewatch']) ? ($rewatch_total - $history_positions[$id]) : '';
-        $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
+            $title = $movie['movie']['title'];
+            $year  = filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN) ? (string)$movie['movie']['year'] : '';
+            $url   = "https://trakt.tv/movies/{$movie['movie']['ids']['slug']}";
 
-        // Increment the position for the next movie in the history
-        $history_positions[$id]++;
+            return nowscrobbling_format_output($title, $year, $url, $rating_val, $rewatch_text);
+        });
+    }
 
-        return nowscrobbling_format_output($title, $year, $url, $rating_text, $rewatch_text);
-    });
-    return $output;
+    // Persist last good HTML to ensure non-empty output on transient API issues
+    $html_key = nowscrobbling_build_cache_key('shortcode_trakt_last_movie_html', [
+        'limit' => $limit,
+        'show_year' => (bool) filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN),
+        'show_rating' => (bool) filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN),
+        'show_rewatch' => (bool) filter_var($atts['show_rewatch'], FILTER_VALIDATE_BOOLEAN),
+    ]);
+
+    if (!empty($output)) {
+        set_transient($html_key, $output, 12 * HOUR_IN_SECONDS);
+        return $output;
+    }
+
+    $prev = get_transient($html_key);
+    if (is_string($prev) && $prev !== '') {
+        return $prev;
+    }
+
+    // As a last resort, show a minimal placeholder instead of empty output
+    return '<em>' . esc_html__('Keine Filme gefunden.', 'nowscrobbling') . '</em>';
 }
 add_shortcode('nowscr_trakt_last_movie', 'nowscr_trakt_last_movie_shortcode');
 
@@ -564,92 +587,72 @@ function nowscr_trakt_last_show_shortcode($atts) {
         'show_rating' => false,
     ], $atts);
 
-    $shows = nowscrobbling_get_or_set_transient('my_trakt_tv_shows_with_ratings', function () {
-        $user = get_option('trakt_user');
-        return [
-            'shows' => nowscrobbling_fetch_trakt_data("users/$user/history/shows", ['limit' => get_option('last_shows_count', 3)], 'trakt_last_show'),
-            'ratings' => nowscrobbling_fetch_trakt_data("users/$user/ratings/shows", [], 'trakt_last_show'),
-            'completed' => nowscrobbling_fetch_trakt_data("users/$user/watched/shows", [], 'trakt_last_show')
-        ];
-    }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
+    $limit = (int) get_option('last_shows_count', 3);
+    $user  = (string) get_option('trakt_user');
 
-    if (!$shows['shows']) {
-        return "<em>Keine Serien gefunden.</em>";
-    }
-
-    $ratings = [];
-    if (isset($shows['ratings']) && is_array($shows['ratings'])) {
-        foreach ($shows['ratings'] as $rating) {
-            if (isset($rating['show']['ids']['trakt'])) {
-                $ratings[$rating['show']['ids']['trakt']] = $rating['rating'];
-            }
+    $shows_key = nowscrobbling_build_cache_key('trakt_last_shows', ['limit' => $limit]);
+    $shows = nowscrobbling_fetch_trakt_data("users/$user/history/shows", ['limit' => $limit], 'trakt_last_shows');
+    if (!is_array($shows) || count($shows) === 0) {
+        $fallback = get_transient($shows_key . '_fallback');
+        if (is_array($fallback) && count($fallback) > 0) {
+            $shows = $fallback;
         }
     }
 
-    $completed_shows = [];
-    if (isset($shows['completed']) && is_array($shows['completed'])) {
-        foreach ($shows['completed'] as $completed_show) {
-            if (!isset($completed_show['show']['ids']['trakt'])) {
-                continue;
-            }
-            
-            $show_id = $completed_show['show']['ids']['trakt'];
-            
-            // Ensure seasons array exists and is valid
-            $seasons = isset($completed_show['seasons']) && is_array($completed_show['seasons']) ? $completed_show['seasons'] : [];
-            
-            $completed_episodes = array_reduce($seasons, function($carry, $season) {
-                return $carry + (isset($season['episode_count']) ? $season['episode_count'] : 0);
-            }, 0);
-            $watched_episodes = array_reduce($seasons, function($carry, $season) {
-                return $carry + (isset($season['completed']) ? $season['completed'] : 0);
-            }, 0);
-
-            if ($watched_episodes === $completed_episodes) {
-                $completed_shows[$show_id] = true;
-            }
-        }
+    $ratings_map = [];
+    if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
+        $ratings_map = nowscrobbling_get_trakt_ratings_map('shows');
     }
 
-    // Initialize an array to store rewatch counts (optional)
     $enable_rewatch = (bool) get_option('ns_enable_rewatch', 0);
+    $compute_rewatch = $enable_rewatch && filter_var($atts['show_rewatch'], FILTER_VALIDATE_BOOLEAN);
     $rewatch_counts = [];
-    if ($enable_rewatch) {
-        foreach ($shows['shows'] as $index => $show) {
-            $id = $show['show']['ids']['trakt'];
-            $val = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/shows/{$id}");
-            $rewatch_counts[$id] = is_array($val) ? $val : [];
+    if ($compute_rewatch && is_array($shows)) {
+        foreach ($shows as $row) {
+            if (!isset($row['show']['ids']['trakt'])) { continue; }
+            $id = (int) $row['show']['ids']['trakt'];
+            $rewatch_counts[$id] = (int) nowscrobbling_get_rewatch_count($id, 'shows');
         }
     }
 
-    // Track the position in the history
     $history_positions = [];
-
-    $output = nowscrobbling_generate_shortcode_output($shows['shows'], function ($show) use ($ratings, $completed_shows, $rewatch_counts, &$history_positions, $atts, $enable_rewatch) {
-        $id = $show['show']['ids']['trakt'];
-        $rating = $atts['show_rating'] ? ($ratings[$id] ?? '') : '';
-        $rating_text = $rating ? "{$rating}" : '';
-        $rewatch_total = isset($rewatch_counts[$id]) && is_array($rewatch_counts[$id]) ? count($rewatch_counts[$id]) : 0;
-        $rewatch_text = '';
-
-        if (isset($completed_shows[$id])) {
-            if (!isset($history_positions[$id])) {
-                $history_positions[$id] = 0;
+    $output = '';
+    if (is_array($shows) && count($shows) > 0) {
+        $output = nowscrobbling_generate_shortcode_output($shows, function ($row) use ($ratings_map, $rewatch_counts, &$history_positions, $atts, $compute_rewatch) {
+            $id = (int) $row['show']['ids']['trakt'];
+            $rating_val = '';
+            if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
+                $rating_val = isset($ratings_map[$id]) ? (string) $ratings_map[$id] : '';
             }
-            $rewatch = ($enable_rewatch && $atts['show_rewatch']) ? ($rewatch_total - $history_positions[$id]) : '';
-            $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
+            $rewatch_text = '';
+            if ($compute_rewatch) {
+                if (!isset($history_positions[$id])) { $history_positions[$id] = 0; }
+                $total = isset($rewatch_counts[$id]) ? (int)$rewatch_counts[$id] : 0;
+                $rewatch = $total - $history_positions[$id];
+                $rewatch_text = $rewatch > 1 ? (string)$rewatch : '';
+                $history_positions[$id]++;
+            }
 
-            // Increment the position for the next show in the history
-            $history_positions[$id]++;
-        }
+            $title = $row['show']['title'];
+            $year  = filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN) ? (string)$row['show']['year'] : '';
+            $url   = "https://trakt.tv/shows/{$row['show']['ids']['slug']}";
+            return nowscrobbling_format_output($title, $year, $url, $rating_val, $rewatch_text);
+        });
+    }
 
-        $title = $show['show']['title'];
-        $year = $atts['show_year'] ? "{$show['show']['year']}" : '';
-        $url = "https://trakt.tv/shows/{$show['show']['ids']['slug']}";
+    $html_key = nowscrobbling_build_cache_key('shortcode_trakt_last_show_html', [
+        'show_year' => (bool) filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN),
+        'show_rating' => (bool) filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN),
+        'show_rewatch' => (bool) filter_var($atts['show_rewatch'], FILTER_VALIDATE_BOOLEAN),
+    ]);
 
-        return nowscrobbling_format_output($title, $year, $url, $rating_text, $rewatch_text);
-    });
-    return $output;
+    if (!empty($output)) {
+        set_transient($html_key, $output, 12 * HOUR_IN_SECONDS);
+        return $output;
+    }
+    $prev = get_transient($html_key);
+    if (is_string($prev) && $prev !== '') { return $prev; }
+    return "<em>Keine Serien gefunden.</em>";
 }
 add_shortcode('nowscr_trakt_last_show', 'nowscr_trakt_last_show_shortcode');
 
@@ -663,59 +666,64 @@ function nowscr_trakt_last_episode_shortcode($atts) {
         'show_rating' => false,
     ], $atts);
 
-    $episodes = nowscrobbling_get_or_set_transient('my_trakt_tv_episodes_with_ratings', function () {
-        $user = get_option('trakt_user');
-        return [
-            'episodes' => nowscrobbling_fetch_trakt_data("users/$user/history/episodes", ['limit' => get_option('last_episodes_count', 3)], 'trakt_last_episode'),
-            'ratings' => nowscrobbling_fetch_trakt_data("users/$user/ratings/episodes", [], 'trakt_last_episode')
-        ];
-    }, get_option('trakt_cache_duration', 5) * MINUTE_IN_SECONDS);
+    $limit = (int) get_option('last_episodes_count', 3);
+    $user  = (string) get_option('trakt_user');
 
-    if (!$episodes['episodes']) {
-        return "<em>Keine Episoden gefunden.</em>";
-    }
-
-    $ratings = [];
-    if (isset($episodes['ratings']) && is_array($episodes['ratings'])) {
-        foreach ($episodes['ratings'] as $rating) {
-            if (isset($rating['episode']['ids']['trakt'])) {
-                $ratings[$rating['episode']['ids']['trakt']] = $rating['rating'];
-            }
+    $eps_key = nowscrobbling_build_cache_key('trakt_last_episodes', ['limit' => $limit]);
+    $episodes = nowscrobbling_fetch_trakt_data("users/$user/history/episodes", ['limit' => $limit], 'trakt_last_episodes');
+    if (!is_array($episodes) || count($episodes) === 0) {
+        $fallback = get_transient($eps_key . '_fallback');
+        if (is_array($fallback) && count($fallback) > 0) {
+            $episodes = $fallback;
         }
     }
 
-    // Initialize an array to store rewatch counts (optional)
+    $ratings_map = [];
+    if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
+        $ratings_map = nowscrobbling_get_trakt_ratings_map('episodes');
+    }
+
     $enable_rewatch = (bool) get_option('ns_enable_rewatch', 0);
-    $rewatch_counts = [];
-    if ($enable_rewatch) {
-        foreach ($episodes['episodes'] as $index => $episode) {
-            $id = $episode['episode']['ids']['trakt'];
-            $val = nowscrobbling_fetch_trakt_data("users/" . get_option('trakt_user') . "/history/episodes/{$id}");
-            $rewatch_counts[$id] = is_array($val) ? $val : [];
-        }
+    $compute_rewatch = $enable_rewatch && filter_var($atts['show_rewatch'], FILTER_VALIDATE_BOOLEAN);
+
+    $output = '';
+    if (is_array($episodes) && count($episodes) > 0) {
+        $output = nowscrobbling_generate_shortcode_output($episodes, function ($episode) use ($ratings_map, $compute_rewatch, $atts) {
+            $season = $episode['episode']['season'];
+            $episodeNumber = $episode['episode']['number'];
+            $title = "S{$season}E{$episodeNumber}: {$episode['episode']['title']}";
+            $url = "https://trakt.tv/shows/{$episode['show']['ids']['slug']}/seasons/{$season}/episodes/{$episodeNumber}";
+            $id = (int) $episode['episode']['ids']['trakt'];
+            $rating_text = '';
+            if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
+                $rating_val = isset($ratings_map[$id]) ? (int)$ratings_map[$id] : '';
+                $rating_text = $rating_val !== '' ? (string)$rating_val : '';
+            }
+
+            // Estimation for episode rewatch is costly; use simple count via helper, but avoid per-item offset complexity
+            $rewatch_text = '';
+            if ($compute_rewatch) {
+                $count = (int) nowscrobbling_get_rewatch_count($id, 'episodes');
+                $rewatch_text = $count > 1 ? (string) $count : '';
+            }
+
+            return nowscrobbling_format_output($title, '', $url, $rating_text, $rewatch_text);
+        });
     }
 
-    $output = nowscrobbling_generate_shortcode_output($episodes['episodes'], function ($episode) use ($ratings, $rewatch_counts, $atts, $enable_rewatch) {
-        $season = $episode['episode']['season'];
-        $episodeNumber = $episode['episode']['number'];
-        $title = "S{$season}E{$episodeNumber}: {$episode['episode']['title']}";
-        $url = "https://trakt.tv/shows/{$episode['show']['ids']['slug']}/seasons/{$season}/episodes/{$episodeNumber}";
-        $id = $episode['episode']['ids']['trakt'];
-        $rating = $atts['show_rating'] ? ($ratings[$id] ?? '') : '';
-        $rating_text = $rating ? "{$rating}" : '';
-        $rewatch_total = isset($rewatch_counts[$id]) && is_array($rewatch_counts[$id]) ? count($rewatch_counts[$id]) : 0;
+    $html_key = nowscrobbling_build_cache_key('shortcode_trakt_last_episode_html', [
+        'show_year' => (bool) filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN),
+        'show_rating' => (bool) filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN),
+        'show_rewatch' => (bool) filter_var($atts['show_rewatch'], FILTER_VALIDATE_BOOLEAN),
+    ]);
 
-        // Adjust the rewatch count based on the position in the history
-        static $rewatch_offset = 0;
-        $rewatch = ($enable_rewatch && $atts['show_rewatch']) ? ($rewatch_total - $rewatch_offset) : '';
-        $rewatch_text = $rewatch > 1 ? "{$rewatch}" : '';
-
-        // Increment the offset for the next episode in the history
-        $rewatch_offset++;
-
-        return nowscrobbling_format_output($title, '', $url, $rating_text, $rewatch_text);
-    });
-    return $output;
+    if (!empty($output)) {
+        set_transient($html_key, $output, 12 * HOUR_IN_SECONDS);
+        return $output;
+    }
+    $prev = get_transient($html_key);
+    if (is_string($prev) && $prev !== '') { return $prev; }
+    return "<em>Keine Episoden gefunden.</em>";
 }
 add_shortcode('nowscr_trakt_last_episode', 'nowscr_trakt_last_episode_shortcode');
 
