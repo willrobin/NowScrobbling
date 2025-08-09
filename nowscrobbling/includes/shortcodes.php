@@ -379,6 +379,14 @@ function nowscr_trakt_history_shortcode($atts) {
     $atts['show_rating']  = filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN);
     $limit = max(1, (int) $atts['limit']);
 
+    // Persisted HTML key for reliable fallback rendering
+    $html_key = nowscrobbling_build_cache_key('shortcode_trakt_history_html', [
+        'limit' => $limit,
+        'show_year' => (bool) $atts['show_year'],
+        'show_rating' => (bool) $atts['show_rating'],
+        'show_rewatch' => (bool) $atts['show_rewatch'],
+    ]);
+
     $watching = nowscrobbling_fetch_trakt_watching();
     
     if (!empty($watching)) {
@@ -418,22 +426,43 @@ function nowscr_trakt_history_shortcode($atts) {
             $nowPlaying,
             isset($atts['max_length']) ? (int) $atts['max_length'] : 0
         );
+        // Store last good HTML for fallback usage
+        set_transient($html_key, $output, 12 * HOUR_IN_SECONDS);
         $hash = nowscrobbling_make_hash([ 'watching' => $type, 'id' => $type === 'movie' ? ($watching['movie']['ids']['trakt'] ?? '') : ($watching['episode']['ids']['trakt'] ?? '') ]);
         return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, true, $atts, 'span');
     }
     
     $activities = nowscrobbling_fetch_trakt_activities('trakt_history');
-
-    if (empty($activities)) {
+    // Normalize activities list: must be a list of arrays with expected structure
+    $valid_list = [];
+    if (is_array($activities)) {
+        if (isset($activities['error'])) {
+            $valid_list = [];
+        } else {
+            foreach ($activities as $row) {
+                if (!is_array($row) || !isset($row['type'])) { continue; }
+                $t = $row['type'];
+                if (!isset($row[$t]['ids']['trakt'])) { continue; }
+                $valid_list[] = $row;
+            }
+        }
+    }
+    if (empty($valid_list)) {
+        // Try previously rendered HTML (persisted) to avoid empty output
+        $prev = get_transient($html_key);
+        if (is_string($prev) && $prev !== '') {
+            $hash = nowscrobbling_make_hash($prev);
+            return nowscrobbling_wrap_output('nowscr_trakt_history', $prev, $hash, false, $atts, 'span');
+        }
         $html = '<em>Keine kürzlichen Aktivitäten gefunden</em>';
         $hash = nowscrobbling_make_hash($html);
         return nowscrobbling_wrap_output('nowscr_trakt_history', $html, $hash, false, [], 'span');
     }
 
-    $slice = array_slice($activities, 0, $limit);
+    $slice = array_slice($valid_list, 0, $limit);
     $output = nowscrobbling_generate_shortcode_output($slice, function($activity) use ($atts) {
-        $type = $activity['type'];
-        $id = $activity[$type]['ids']['trakt'];
+        $type = isset($activity['type']) ? $activity['type'] : '';
+        $id = ($type && isset($activity[$type]['ids']['trakt'])) ? $activity[$type]['ids']['trakt'] : null;
         $rating_val = '';
         if ($atts['show_rating']) {
             // Ratings map only; no per-item direct fetch during render
@@ -443,15 +472,26 @@ function nowscr_trakt_history_shortcode($atts) {
                 $rating_val = (string) $fetched;
             }
         }
-        $title = ($type === 'movie')
-            ? $activity['movie']['title']
-            : ($type === 'episode'
-                ? ($activity['show']['title'] . ' - S' . $activity['episode']['season'] . 'E' . $activity['episode']['number'] . ': ' . $activity['episode']['title'])
-                : $activity['show']['title']);
-        $year = ($atts['show_year'] && $type === 'movie') ? (string) $activity['movie']['year'] : '';
-        $link = ($type === 'movie')
-            ? ('https://trakt.tv/movies/' . $activity['movie']['ids']['slug'])
-            : ('https://trakt.tv/shows/' . $activity['show']['ids']['slug'] . '/seasons/' . $activity['episode']['season'] . '/episodes/' . $activity['episode']['number']);
+        $title = '';
+        $year = '';
+        $link = '';
+        if ($type === 'movie' && isset($activity['movie'])) {
+            $title = $activity['movie']['title'] ?? '';
+            $year  = ($atts['show_year'] && isset($activity['movie']['year'])) ? (string) $activity['movie']['year'] : '';
+            $link  = isset($activity['movie']['ids']['slug']) ? ('https://trakt.tv/movies/' . $activity['movie']['ids']['slug']) : '';
+        } elseif ($type === 'episode' && isset($activity['episode'], $activity['show'])) {
+            $s = $activity['episode']['season'] ?? '';
+            $e = $activity['episode']['number'] ?? '';
+            $t = $activity['episode']['title'] ?? '';
+            $showTitle = $activity['show']['title'] ?? '';
+            $title = trim($showTitle . ' - ' . 'S' . $s . 'E' . $e . ': ' . $t);
+            if (isset($activity['show']['ids']['slug'])) {
+                $link = 'https://trakt.tv/shows/' . $activity['show']['ids']['slug'] . '/seasons/' . $s . '/episodes/' . $e;
+            }
+        } elseif ($type === 'show' && isset($activity['show'])) {
+            $title = $activity['show']['title'] ?? '';
+            $link  = isset($activity['show']['ids']['slug']) ? ('https://trakt.tv/shows/' . $activity['show']['ids']['slug']) : '';
+        }
         $rewatch_text = '';
         if ($atts['show_rewatch']) {
             $rewatchType = ($type === 'movie') ? 'movies' : (($type === 'episode') ? 'episodes' : 'shows');
@@ -460,6 +500,9 @@ function nowscr_trakt_history_shortcode($atts) {
         }
         return nowscrobbling_format_output($title, $year, $link, $rating_val, $rewatch_text, false, '', isset($atts['max_length']) ? (int) $atts['max_length'] : 0);
     });
+    if (!empty($output)) {
+        set_transient($html_key, $output, 12 * HOUR_IN_SECONDS);
+    }
     $hash = nowscrobbling_make_hash([ 'count' => count($slice), 'first' => $slice[0]['watched_at'] ?? '' ]);
     return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, false, $atts, 'span');
 }
