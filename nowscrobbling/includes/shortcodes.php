@@ -54,7 +54,9 @@ function nowscr_lastfm_indicator_shortcode() {
     }, max( 30, (int) get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS ) );
 
     if (!$now || empty($now['recenttracks']['track'])) {
-        return '<em>Keine kürzlichen Tracks gefunden.</em>';
+        $html = '<em>Keine kürzlichen Tracks gefunden.</em>';
+        $hash = nowscrobbling_make_hash($html);
+        return nowscrobbling_wrap_output('nowscr_lastfm_indicator', $html, $hash, false, [], 'span');
     }
 
     $currentTrack = $now['recenttracks']['track'][0];
@@ -91,7 +93,7 @@ function nowscr_lastfm_history_shortcode($atts) {
     if (isset($scrobbles['error'])) {
         $html = "<em>" . esc_html($scrobbles['error']) . "</em>";
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_lastfm_history', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_lastfm_history', $html, $hash, false, [], 'span');
     }
 
     $output = '';
@@ -156,7 +158,7 @@ function nowscr_lastfm_top_artists_shortcode($atts) {
     if (!$data || empty($data['topartists']['artist'])) {
         $html = "<em>Keine Top-Künstler gefunden.</em>";
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_lastfm_top_artists', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_lastfm_top_artists', $html, $hash, false, [], 'span');
     }
 
     // Text kürzen basierend auf 'max_length'
@@ -197,7 +199,7 @@ function nowscr_lastfm_top_albums_shortcode($atts) {
     if (!$data || empty($data['topalbums']['album'])) {
         $html = "<em>Keine Top-Alben gefunden.</em>";
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_lastfm_top_albums', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_lastfm_top_albums', $html, $hash, false, [], 'span');
     }
 
     $output = nowscrobbling_generate_shortcode_output($data['topalbums']['album'], function ($album) use ($atts) {
@@ -240,7 +242,7 @@ function nowscr_lastfm_top_tracks_shortcode($atts) {
     if (!$data || empty($data['toptracks']['track'])) {
         $html = "<em>Keine Top-Titel gefunden.</em>";
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_lastfm_top_tracks', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_lastfm_top_tracks', $html, $hash, false, [], 'span');
     }
 
     $output = nowscrobbling_generate_shortcode_output($data['toptracks']['track'], function ($track) use ($atts) {
@@ -282,7 +284,7 @@ function nowscr_lastfm_lovedtracks_shortcode($atts) {
     if (!$data || empty($data['lovedtracks']['track'])) {
         $html = "<em>Keine Lieblingslieder gefunden.</em>";
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_lastfm_lovedtracks', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_lastfm_lovedtracks', $html, $hash, false, [], 'span');
     }
 
     $output = nowscrobbling_generate_shortcode_output($data['lovedtracks']['track'], function ($track) use ($atts) {
@@ -344,14 +346,14 @@ function nowscr_trakt_indicator_shortcode() {
     if (!empty($watching)) {
         $html = '<strong>Scrobbelt gerade</strong>';
         $hash = nowscrobbling_make_hash([ 'type' => $watching['type'] ?? 'unknown', 'id' => $watching[$watching['type']]['ids']['trakt'] ?? '' ]);
-    return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, true, []);
+        return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, true, [], 'span');
     }
 
     $activities = nowscrobbling_fetch_trakt_activities('trakt_indicator');
     if (empty($activities)) {
         $html = '<em>Keine kürzlichen Aktivitäten gefunden</em>';
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, false, [], 'span');
     }
 
     $lastActivity = reset($activities);
@@ -359,7 +361,7 @@ function nowscr_trakt_indicator_shortcode() {
     $date->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
     $html = 'Zuletzt geschaut: ' . esc_html($date->format(get_option('date_format') . ' ' . get_option('time_format')));
     $hash = nowscrobbling_make_hash([ 'watched_at' => $lastActivity['watched_at'] ]);
-    return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, false, []);
+    return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, false, [], 'span');
 }
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
 
@@ -417,7 +419,7 @@ function nowscr_trakt_history_shortcode($atts) {
             isset($atts['max_length']) ? (int) $atts['max_length'] : 0
         );
         $hash = nowscrobbling_make_hash([ 'watching' => $type, 'id' => $type === 'movie' ? ($watching['movie']['ids']['trakt'] ?? '') : ($watching['episode']['ids']['trakt'] ?? '') ]);
-        return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, true, $atts);
+        return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, true, $atts, 'span');
     }
     
     $activities = nowscrobbling_fetch_trakt_activities('trakt_history');
@@ -425,7 +427,7 @@ function nowscr_trakt_history_shortcode($atts) {
     if (empty($activities)) {
         $html = '<em>Keine kürzlichen Aktivitäten gefunden</em>';
         $hash = nowscrobbling_make_hash($html);
-        return nowscrobbling_wrap_output('nowscr_trakt_history', $html, $hash, false);
+        return nowscrobbling_wrap_output('nowscr_trakt_history', $html, $hash, false, [], 'span');
     }
 
     $slice = array_slice($activities, 0, $limit);
@@ -462,7 +464,7 @@ function nowscr_trakt_history_shortcode($atts) {
         return nowscrobbling_format_output($title, $year, $link, $rating_val, $rewatch_text, false, '', isset($atts['max_length']) ? (int) $atts['max_length'] : 0);
     });
     $hash = nowscrobbling_make_hash([ 'count' => count($slice), 'first' => $slice[0]['watched_at'] ?? '' ]);
-    return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, false, $atts);
+    return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, false, $atts, 'span');
 }
 add_shortcode('nowscr_trakt_history', 'nowscr_trakt_history_shortcode');
 
