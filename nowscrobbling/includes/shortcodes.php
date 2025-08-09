@@ -342,25 +342,54 @@ function nowscrobbling_format_output($title, $year, $url, $rating = '', $rewatch
 
 // Trakt Indicator Shortcode
 function nowscr_trakt_indicator_shortcode() {
+    // Persisted HTML key for reliable fallback rendering
+    $html_key = nowscrobbling_build_cache_key('shortcode_trakt_indicator_html');
+
     $watching = nowscrobbling_fetch_trakt_watching();
-    if (!empty($watching)) {
+    if (is_array($watching) && !empty($watching)) {
         $html = '<strong>Scrobbelt gerade</strong>';
-        $hash = nowscrobbling_make_hash([ 'type' => $watching['type'] ?? 'unknown', 'id' => $watching[$watching['type']]['ids']['trakt'] ?? '' ]);
+        $type = isset($watching['type']) ? $watching['type'] : 'unknown';
+        $id   = (isset($watching[$type]['ids']['trakt'])) ? $watching[$type]['ids']['trakt'] : '';
+        $hash = nowscrobbling_make_hash([ 'type' => $type, 'id' => $id ]);
+        // Store last good HTML for fallback usage
+        set_transient($html_key, $html, 12 * HOUR_IN_SECONDS);
         return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, true, [], 'span');
     }
 
     $activities = nowscrobbling_fetch_trakt_activities('trakt_indicator');
-    if (empty($activities)) {
+    $valid = null;
+    if (is_array($activities)) {
+        foreach ($activities as $row) {
+            if (!is_array($row)) { continue; }
+            if (!isset($row['watched_at'])) { continue; }
+            $valid = $row;
+            break;
+        }
+    }
+
+    if (!is_array($valid)) {
+        // Try previously rendered HTML (persisted) to avoid empty output
+        $prev = get_transient($html_key);
+        if (is_string($prev) && $prev !== '') {
+            $hash = nowscrobbling_make_hash($prev);
+            return nowscrobbling_wrap_output('nowscr_trakt_indicator', $prev, $hash, false, [], 'span');
+        }
         $html = '<em>Keine kürzlichen Aktivitäten gefunden</em>';
         $hash = nowscrobbling_make_hash($html);
         return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, false, [], 'span');
     }
 
-    $lastActivity = reset($activities);
-    $date = new DateTime($lastActivity['watched_at']);
+    $when = is_string($valid['watched_at']) ? $valid['watched_at'] : '';
+    // Fallback to current time if format is missing
+    try {
+        $date = new DateTime($when ?: 'now');
+    } catch (Exception $e) {
+        $date = new DateTime('now');
+    }
     $date->setTimezone(new DateTimeZone(get_option('timezone_string') ?: 'UTC'));
     $html = 'Zuletzt geschaut: ' . esc_html($date->format(get_option('date_format') . ' ' . get_option('time_format')));
-    $hash = nowscrobbling_make_hash([ 'watched_at' => $lastActivity['watched_at'] ]);
+    $hash = nowscrobbling_make_hash([ 'watched_at' => $when ]);
+    set_transient($html_key, $html, 12 * HOUR_IN_SECONDS);
     return nowscrobbling_wrap_output('nowscr_trakt_indicator', $html, $hash, false, [], 'span');
 }
 add_shortcode('nowscr_trakt_indicator', 'nowscr_trakt_indicator_shortcode');
