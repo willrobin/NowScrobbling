@@ -132,26 +132,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // During polling we force-refresh so server can fetch fresh data (ETag-aware)
         const rawAttrs = el.getAttribute('data-ns-attrs');
         const parsedAttrs = rawAttrs ? JSON.parse(rawAttrs) : null;
-        const data = await fetchUpdate(el.dataset.nowscrobblingShortcode, currentHash, true, parsedAttrs);
+        // Respect server-side cache TTLs when idle; force-refresh only while now playing
+        const isNowPlaying = el.getAttribute('data-ns-nowplaying') === '1';
+        const data = await fetchUpdate(el.dataset.nowscrobblingShortcode, currentHash, !!isNowPlaying, parsedAttrs);
         
         const result = updateElementFromResponse(el, data);
 
         // Determine adaptive interval
-        const isNowPlaying = el.getAttribute('data-ns-nowplaying') === '1';
+        const isNowPlayingAfter = el.getAttribute('data-ns-nowplaying') === '1';
         // Base window from settings
         const base = intervalMs;
         // Idle base tries less often; cap by maxIntervalMs
         const idleBase = Math.min(maxIntervalMs, Math.max(base * 2, 60000)); // at least 60s when idle
 
         // Maintain an idle growth factor to stretch intervals while idle and unchanged
-        if (result.changed || isNowPlaying) {
+        if (result.changed || isNowPlayingAfter) {
           el._nsState.idleSteps = 0;
         } else {
           el._nsState.idleSteps = Math.min((el._nsState.idleSteps || 0) + 1, 6);
         }
 
         let nextDelay;
-        if (isNowPlaying) {
+        if (isNowPlayingAfter) {
           // While listening/watching, check roughly every minute (or configured base)
           nextDelay = Math.max(60000, base);
         } else {
@@ -192,8 +194,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentHash = el.dataset.nsHash || null;
       const rawAttrs = el.getAttribute('data-ns-attrs');
       const parsedAttrs = rawAttrs ? JSON.parse(rawAttrs) : null;
-      // Initial request after SSR should force a refresh to fetch the newest data
-      const data = await fetchUpdate(shortcode, currentHash, true, parsedAttrs);
+      // Initial request after SSR uses cache; no forced refresh for faster first paint
+      const data = await fetchUpdate(shortcode, currentHash, false, parsedAttrs);
       updateElementFromResponse(el, data);
     } catch (e) {
       if (nowscrobbling_ajax.debug) {
@@ -218,7 +220,22 @@ document.addEventListener('DOMContentLoaded', () => {
    * Initialize all shortcode wrappers
    */
   const elements = document.querySelectorAll('[data-nowscrobbling-shortcode]');
-  elements.forEach((el) => initializeElement(el));
+  // Lazy-initialize elements when they enter the viewport
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          io.unobserve(el);
+          initializeElement(el);
+        }
+      });
+    }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0 });
+    elements.forEach((el) => io.observe(el));
+  } else {
+    // Fallback for older browsers
+    elements.forEach((el) => initializeElement(el));
+  }
 
   /**
    * Handle dynamic content (for themes that load content via AJAX)
@@ -233,7 +250,20 @@ document.addEventListener('DOMContentLoaded', () => {
           if (node.matches && node.matches('[data-nowscrobbling-shortcode]')) {
             arr.push(node);
           }
-          arr.forEach(initializeElement);
+          if ('IntersectionObserver' in window) {
+            const io = new IntersectionObserver((entries, observer) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  const el = entry.target;
+                  observer.unobserve(el);
+                  initializeElement(el);
+                }
+              });
+            }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0 });
+            arr.forEach((el) => io.observe(el));
+          } else {
+            arr.forEach(initializeElement);
+          }
         }
       }
     }

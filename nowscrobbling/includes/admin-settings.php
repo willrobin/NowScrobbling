@@ -237,12 +237,28 @@ function nowscrobbling_settings_page()
 
         <!-- Settings grouped by topic -->
         <div class="card" style="max-width: 100%; margin-bottom: 20px;">
-            <h2 class="title">Einstellungen</h2>
+            <h2 class="title">API-Zugangsdaten</h2>
+            <?php
+                // Nach dem Speichern automatisch API-Verbindungen testen und anzeigen
+                if ( isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true' ) {
+                    $test = nowscrobbling_test_api_connections();
+                    echo '<div class="updated" style="margin:10px 0;">';
+                    echo '<p style="margin:6px 0;">API-Verbindungen geprüft:</p>';
+                    echo '<ul style="margin:0 0 6px 18px;list-style:disc;">';
+                    foreach (['lastfm' => 'Last.fm', 'trakt' => 'Trakt'] as $k => $label) {
+                        $res = isset($test[$k]) ? $test[$k] : ['status' => 'warning', 'message' => 'Nicht konfiguriert'];
+                        $color = ($res['status'] === 'success') ? '#0a7f3f' : (($res['status'] === 'warning') ? '#9a6a00' : '#a10b0b');
+                        echo '<li><strong>' . esc_html($label) . ':</strong> <span style="color:' . esc_attr($color) . '">' . esc_html($res['message']) . '</span></li>';
+                    }
+                    echo '</ul>';
+                    echo '</div>';
+                    update_option('ns_last_api_test', [ 'ts' => current_time('mysql'), 'results' => $test ], false);
+                }
+            ?>
             <form method="post" action="options.php">
                 <?php settings_fields('nowscrobbling-settings-group'); ?>
 
-                <details class="ns-block" <?php echo (!$lastfm_configured || !$trakt_configured) ? 'open' : ''; ?>>
-                    <summary>API-Zugangsdaten</summary>
+                <div class="ns-block" style="margin:12px 0;">
                     <div class="ns-grid">
                         <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
                             <h3 style="margin:0 0 6px 0;">Last.fm</h3>
@@ -289,63 +305,149 @@ function nowscrobbling_settings_page()
                             </table>
                         </div>
                     </div>
-                    <div class="ns-toolbar" style="margin-top:8px;">
-                        <form method="post">
-                            <?php wp_nonce_field('nowscrobbling_test_apis', 'nowscrobbling_test_nonce'); ?>
-                            <input type="submit" name="test_apis" value="API-Verbindungen testen" class="button">
-                        </form>
-                    </div>
-                </details>
+                </div>
 
-                <details class="ns-block" open>
-                    <summary>Anzeige & Verhalten</summary>
-                    <table class="form-table">
-                        <tr><th>AJAX-Nachladen</th><td><em>Immer aktiv</em><br/><small>Lädt Shortcodes nach dem Seitenaufbau per JavaScript neu (schnellere Seite, „live“-Effekt). Ohne JS bleibt die serverseitige Ausgabe sichtbar.</small></td></tr>
-                        <tr><th>Rewatch-Zählung</th><td><em>Immer aktiv</em><br/><small>Ermittelt Wiederholungen. Anzeige nur, wenn im Shortcode gewünscht.</small></td></tr>
-                    </table>
-                </details>
+                
 
-                <details class="ns-block" open>
-                    <summary>Polling & Performance</summary>
-                    <table class="form-table">
-                        <tr><th>Now-Playing Intervall (Sek.)</th><td><?php nowscrobbling_setting_callback('ns_nowplaying_interval','number',['min'=>5,'step'=>1,'default'=>20]); ?><br/><small>Wie oft Now-Playing Widgets neu abgefragt werden. Tipp: 15–30 Sekunden.</small></td></tr>
-                        <tr><th>Max. Intervall (Sek.)</th><td><?php nowscrobbling_setting_callback('ns_max_interval','number',['min'=>30,'step'=>5,'default'=>300]); ?><br/><small>Obergrenze für Backoff bei Fehlern.</small></td></tr>
-                        <tr><th>Backoff Multiplikator</th><td><?php nowscrobbling_setting_callback('ns_backoff_multiplier','number',['min'=>1,'step'=>0.1,'default'=>2]); ?><br/><small>Faktor, um das Intervall nach Fehlern zu vergrößern.</small></td></tr>
-                    </table>
-                </details>
+                
 
-                <details class="ns-block">
-                    <summary>Datenmengen & Caching</summary>
-                    <div class="ns-grid">
-                        <div class="ns-col">
-                            <table class="form-table">
-                                <tr><th>Top-Titel</th><td><?php nowscrobbling_setting_callback('top_tracks_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Top-Listen (Last.fm).</small></td></tr>
-                                <tr><th>Top-Künstler</th><td><?php nowscrobbling_setting_callback('top_artists_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Top-Listen (Last.fm).</small></td></tr>
-                                <tr><th>Top-Alben</th><td><?php nowscrobbling_setting_callback('top_albums_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Top-Listen (Last.fm).</small></td></tr>
-                                <tr><th>Lieblingslieder</th><td><?php nowscrobbling_setting_callback('lovedtracks_count','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Anzahl in den Loved-Listen (Last.fm).</small></td></tr>
-                            </table>
-                        </div>
-                        <div class="ns-col">
-                            <table class="form-table">
-                                <tr><th>Letzte Filme</th><td><?php nowscrobbling_setting_callback('last_movies_count','number',['min'=>1,'step'=>1,'default'=>3]); ?><br/><small>Anzahl in den Trakt-History-Listen.</small></td></tr>
-                                <tr><th>Letzte Serien</th><td><?php nowscrobbling_setting_callback('last_shows_count','number',['min'=>1,'step'=>1,'default'=>3]); ?><br/><small>Anzahl in den Trakt-History-Listen.</small></td></tr>
-                                <tr><th>Letzte Episoden</th><td><?php nowscrobbling_setting_callback('last_episodes_count','number',['min'=>1,'step'=>1,'default'=>3]); ?><br/><small>Anzahl in den Trakt-History-Listen.</small></td></tr>
-                            </table>
-                        </div>
-                        <div class="ns-col">
-                            <table class="form-table">
-                                <tr><th>Allgemeine Cache-Dauer (Min.)</th><td><?php nowscrobbling_setting_callback('cache_duration','number',['min'=>1,'step'=>1,'default'=>60]); ?><br/><small>Standard für nicht spezifizierte Caches.</small></td></tr>
-                                <tr><th>Last.fm Cache (Min.)</th><td><?php nowscrobbling_setting_callback('lastfm_cache_duration','number',['min'=>1,'step'=>1,'default'=>1]); ?><br/><small>Kürzere Intervalle für Now-Playing, längere für Tops/Historie.</small></td></tr>
-                                <tr><th>Trakt Cache (Min.)</th><td><?php nowscrobbling_setting_callback('trakt_cache_duration','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Kurz für Watching/History, länger für Stats.</small></td></tr>
-                                <tr><th>Last.fm Aktivitäten</th><td><?php nowscrobbling_setting_callback('lastfm_activity_limit','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Wie viele Scrobbles auf einmal geladen werden.</small></td></tr>
-                                <tr><th>Trakt Aktivitäten</th><td><?php nowscrobbling_setting_callback('trakt_activity_limit','number',['min'=>1,'step'=>1,'default'=>5]); ?><br/><small>Wie viele Aktivitäten auf einmal geladen werden.</small></td></tr>
-                            </table>
-                        </div>
-                    </div>
-                </details>
-
-                <?php submit_button('Änderungen speichern'); ?>
+                <?php submit_button('Zugangsdaten speichern'); ?>
             </form>
+        </div>
+
+        <!-- Nutzung (Graph) -->
+        <div class="card" style="max-width: 100%; margin-bottom: 20px;">
+            <h2 class="title">Nutzung</h2>
+            <p style="margin:6px 0 12px; color:#555;">Anfragen pro Stunde (letzte 48 Stunden) für Last.fm und Trakt. Zusätzlich Badges für die letzten 24 Stunden.</p>
+            <?php
+                $ts = get_option('ns_metrics_ts', []);
+                $now_ts = (int) current_time('timestamp');
+                $labels = [];
+                $series = [
+                    'lastfm' => [ 'req' => [], 'cache' => [] ],
+                    'trakt'  => [ 'req' => [], 'cache' => [] ],
+                ];
+                for ($i = 47; $i >= 0; $i--) {
+                    $t = $now_ts - $i * HOUR_IN_SECONDS;
+                    $bucket = date_i18n('YmdH', $t);
+                    $labels[] = esc_js( date_i18n('H\u\h', $t) );
+                    foreach (['lastfm','trakt'] as $svc) {
+                        $row = isset($ts[$bucket][$svc]) ? $ts[$bucket][$svc] : [];
+                        $series[$svc]['req'][]      = isset($row['total_requests']) ? (int)$row['total_requests'] : 0;
+                        $series[$svc]['cache'][]    = isset($row['cache_hits']) ? (int)$row['cache_hits'] : 0;
+                    }
+                }
+                // Totals since activation (cumulative) and 24h sums
+                $metrics = get_option('ns_metrics', []);
+                $tot_lastfm = isset($metrics['lastfm']['total_requests']) ? (int)$metrics['lastfm']['total_requests'] : 0;
+                $tot_trakt  = isset($metrics['trakt']['total_requests']) ? (int)$metrics['trakt']['total_requests'] : 0;
+                $sum_lf_24_req = 0; $sum_lf_24_cache = 0; $sum_tr_24_req = 0; $sum_tr_24_cache = 0;
+                $sum_lf_24_etag = 0; $sum_tr_24_etag = 0;
+                $sum_lf_24_err  = 0; $sum_tr_24_err  = 0;
+                $sum_lf_24_fb   = 0; $sum_tr_24_fb   = 0;
+                for ($j = 23; $j >= 0; $j--) {
+                    $tt = $now_ts - $j * HOUR_IN_SECONDS;
+                    $bk = date_i18n('YmdH', $tt);
+                    $rl = isset($ts[$bk]['lastfm']) ? $ts[$bk]['lastfm'] : [];
+                    $rt = isset($ts[$bk]['trakt']) ? $ts[$bk]['trakt'] : [];
+                    $sum_lf_24_req   += isset($rl['total_requests']) ? (int)$rl['total_requests'] : 0;
+                    $sum_lf_24_cache += isset($rl['cache_hits']) ? (int)$rl['cache_hits'] : 0;
+                    $sum_lf_24_etag  += isset($rl['etag_hits']) ? (int)$rl['etag_hits'] : 0;
+                    $sum_lf_24_err   += isset($rl['total_errors']) ? (int)$rl['total_errors'] : 0;
+                    $sum_lf_24_fb    += isset($rl['fallback_hits']) ? (int)$rl['fallback_hits'] : 0;
+                    $sum_tr_24_req   += isset($rt['total_requests']) ? (int)$rt['total_requests'] : 0;
+                    $sum_tr_24_cache += isset($rt['cache_hits']) ? (int)$rt['cache_hits'] : 0;
+                    $sum_tr_24_etag  += isset($rt['etag_hits']) ? (int)$rt['etag_hits'] : 0;
+                    $sum_tr_24_err   += isset($rt['total_errors']) ? (int)$rt['total_errors'] : 0;
+                    $sum_tr_24_fb    += isset($rt['fallback_hits']) ? (int)$rt['fallback_hits'] : 0;
+                }
+            ?>
+            <div class="ns-grid">
+                <div class="ns-col">
+                    <h3 style="margin:0 0 6px 0;">Last.fm</h3>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center;">
+                        <span class="ns-badge" title="API-Requests (24h)" style="background:#1d4ed8;color:#fff;border:1px solid #1d4ed8;">API 24h: <?php echo (int)$sum_lf_24_req; ?></span>
+                        <span class="ns-badge" title="Cache-Hits (24h)" style="background:#10b981;color:#fff;border:1px solid #10b981;">Cache 24h: <?php echo (int)$sum_lf_24_cache; ?></span>
+                        <?php if ($sum_lf_24_etag > 0): ?><span class="ns-badge" title="ETag-Hits (24h)" style="background:#6366f1;color:#fff;border:1px solid #6366f1;">ETag 24h: <?php echo (int)$sum_lf_24_etag; ?></span><?php endif; ?>
+                        <?php if ($sum_lf_24_err > 0): ?><span class="ns-badge" title="Fehler (24h)" style="background:#ef4444;color:#fff;border:1px solid #ef4444;">Fehler 24h: <?php echo (int)$sum_lf_24_err; ?></span><?php endif; ?>
+                        <?php if ($sum_lf_24_fb > 0): ?><span class="ns-badge" title="Fallback-Hits (24h)" style="background:#f59e0b;color:#fff;border:1px solid #f59e0b;">Fallback 24h: <?php echo (int)$sum_lf_24_fb; ?></span><?php endif; ?>
+                    </div>
+                    <canvas id="nsChartLastfm" width="640" height="220" style="max-width:100%;border:1px solid #e3e5e8;border-radius:6px;background:#fff"></canvas>
+                </div>
+                <div class="ns-col">
+                    <h3 style="margin:0 0 6px 0;">Trakt</h3>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center;">
+                        <span class="ns-badge" title="API-Requests (24h)" style="background:#1d4ed8;color:#fff;border:1px solid #1d4ed8;">API 24h: <?php echo (int)$sum_tr_24_req; ?></span>
+                        <span class="ns-badge" title="Cache-Hits (24h)" style="background:#10b981;color:#fff;border:1px solid #10b981;">Cache 24h: <?php echo (int)$sum_tr_24_cache; ?></span>
+                        <?php if ($sum_tr_24_etag > 0): ?><span class="ns-badge" title="ETag-Hits (24h)" style="background:#6366f1;color:#fff;border:1px solid #6366f1;">ETag 24h: <?php echo (int)$sum_tr_24_etag; ?></span><?php endif; ?>
+                        <?php if ($sum_tr_24_err > 0): ?><span class="ns-badge" title="Fehler (24h)" style="background:#ef4444;color:#fff;border:1px solid #ef4444;">Fehler 24h: <?php echo (int)$sum_tr_24_err; ?></span><?php endif; ?>
+                        <?php if ($sum_tr_24_fb > 0): ?><span class="ns-badge" title="Fallback-Hits (24h)" style="background:#f59e0b;color:#fff;border:1px solid #f59e0b;">Fallback 24h: <?php echo (int)$sum_tr_24_fb; ?></span><?php endif; ?>
+                    </div>
+                    <canvas id="nsChartTrakt" width="640" height="220" style="max-width:100%;border:1px solid #e3e5e8;border-radius:6px;background:#fff"></canvas>
+                </div>
+            </div>
+            <script>
+            (function(){
+                // Minimal Canvas line-drawing helper (no external deps)
+                function drawChart(canvasId, labels, series){
+                    var c = document.getElementById(canvasId);
+                    if(!c) return;
+                    var ctx = c.getContext('2d');
+                    var W = c.width, H = c.height;
+                    ctx.clearRect(0,0,W,H);
+                    // padding
+                    var P = { l: 32, r: 10, t: 10, b: 22 };
+                    var plotW = W - P.l - P.r, plotH = H - P.t - P.b;
+                    function maxOf(arr){ return arr.reduce(function(m,v){ return v>m? v:m; }, 0); }
+                    var maxY = Math.max(1, maxOf(series.req.concat(series.cache)));
+                    // grid
+                    ctx.strokeStyle = '#eef1f4';
+                    ctx.lineWidth = 1;
+                    for(var i=0;i<=4;i++){
+                        var y = P.t + (plotH * i / 4);
+                        ctx.beginPath(); ctx.moveTo(P.l,y); ctx.lineTo(W-P.r,y); ctx.stroke();
+                    }
+                    // y labels
+                    ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif';
+                    for(var i=0;i<=4;i++){
+                        var val = Math.round(maxY * (1 - i/4));
+                        var y = P.t + (plotH * i / 4);
+                        ctx.fillText(String(val), 4, y+3);
+                    }
+                    // x labels (every 6th)
+                    var n = labels.length;
+                    for(var i=0;i<n;i+=6){
+                        var x = P.l + (plotW * i / (n-1));
+                        ctx.fillText(labels[i], x-12, H-6);
+                    }
+                    function pathOf(values){
+                        ctx.beginPath();
+                        for(var i=0;i<values.length;i++){
+                            var x = P.l + (plotW * i / (values.length-1));
+                            var y = P.t + plotH * (1 - (values[i]/maxY));
+                            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                        }
+                    }
+                    function drawLine(values, color){
+                        ctx.strokeStyle = color; ctx.lineWidth = 2; pathOf(values); ctx.stroke();
+                    }
+                    // draw lines: requests, cache
+                    drawLine(series.req, '#1d4ed8'); // blue
+                    drawLine(series.cache, '#10b981'); // green
+                    // Legend
+                    var legend = [ ['Anfragen','#1d4ed8'], ['Cache','#10b981'] ];
+                    var lx = W - P.r - 160, ly = P.t + 6;
+                    legend.forEach(function(item, idx){
+                        ctx.fillStyle = item[1]; ctx.fillRect(lx, ly + idx*16 - 8, 10, 10);
+                        ctx.fillStyle = '#374151'; ctx.fillText(item[0], lx + 14, ly + idx*16);
+                    });
+                }
+                var labels = <?php echo wp_json_encode($labels); ?>;
+                var data = <?php echo wp_json_encode($series); ?>;
+                drawChart('nsChartLastfm', labels, data.lastfm);
+                drawChart('nsChartTrakt', labels, data.trakt);
+            })();
+            </script>
         </div>
 
         

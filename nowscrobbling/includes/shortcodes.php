@@ -100,7 +100,7 @@ function nowscr_lastfm_history_shortcode($atts) {
     $isNowPlaying = false;
     foreach ($scrobbles as $track) {
         if ($track['nowplaying']) {
-            $nowPlaying = '<img src="' . esc_url( ( defined('NOWSCROBBLING_URL') ? NOWSCROBBLING_URL : plugins_url('/', dirname(__DIR__)) ) . 'public/images/nowplaying.gif' ) . '" alt="NOW PLAYING" /> ';
+            $nowPlaying = '<img src="' . esc_url( ( defined('NOWSCROBBLING_URL') ? NOWSCROBBLING_URL : plugins_url('/', dirname(__DIR__)) ) . 'public/images/nowplaying.gif' ) . '" alt="NOW PLAYING" loading="lazy" decoding="async" /> ';
             $url = esc_url($track['url']);
             $artist = esc_html($track['artist']);
             $name = esc_html($track['name']);
@@ -389,12 +389,12 @@ function nowscr_trakt_history_shortcode($atts) {
 
         $rating = '';
         if ($atts['show_rating'] && $id !== null) {
-            // Try fast path from ratings map first, fallback to direct fetch
+            // Only use ratings map; avoid synchronous direct fetches during render
             $rating = match ($type) {
-                'movie' => ( nowscrobbling_get_trakt_rating_from_map('movies', $id) ?? nowscrobbling_fetch_trakt_movie_rating($id) ),
-                'episode' => ( nowscrobbling_get_trakt_rating_from_map('episodes', $id) ?? nowscrobbling_fetch_trakt_episode_rating($id) ),
-                'show' => ( nowscrobbling_get_trakt_rating_from_map('shows', $id) ?? nowscrobbling_fetch_trakt_show_rating($id) ),
-                default => '',
+                'movie' => nowscrobbling_get_trakt_rating_from_map('movies', $id),
+                'episode' => nowscrobbling_get_trakt_rating_from_map('episodes', $id),
+                'show' => nowscrobbling_get_trakt_rating_from_map('shows', $id),
+                default => null,
             };
         }
         $rewatch = $atts['show_rewatch'] ? nowscrobbling_get_rewatch_count($id, $type === 'movie' ? 'movies' : 'episodes') : '';
@@ -406,7 +406,7 @@ function nowscr_trakt_history_shortcode($atts) {
             ? "https://trakt.tv/movies/{$watching['movie']['ids']['slug']}"
             : "https://trakt.tv/shows/{$watching['show']['ids']['slug']}/seasons/{$watching['episode']['season']}/episodes/{$watching['episode']['number']}";
 
-        $nowPlaying = '<img src="' . esc_url( ( defined('NOWSCROBBLING_URL') ? NOWSCROBBLING_URL : plugins_url('/', dirname(__DIR__)) ) . 'public/images/nowplaying.gif' ) . '" alt="NOW PLAYING" style="vertical-align: text-bottom; height: 1em;" /> ';
+        $nowPlaying = '<img src="' . esc_url( ( defined('NOWSCROBBLING_URL') ? NOWSCROBBLING_URL : plugins_url('/', dirname(__DIR__)) ) . 'public/images/nowplaying.gif' ) . '" alt="NOW PLAYING" loading="lazy" decoding="async" style="vertical-align: text-bottom; height: 1em;" /> ';
 
         $output = nowscrobbling_format_output(
             $title,
@@ -435,13 +435,10 @@ function nowscr_trakt_history_shortcode($atts) {
         $type = $activity['type'];
         $id = $activity[$type]['ids']['trakt'];
         $rating_val = '';
-    if ($atts['show_rating']) {
-        // Try fast map first
-        $mapType = ($type === 'movie') ? 'movies' : (($type === 'episode') ? 'episodes' : 'shows');
-        $fetched = nowscrobbling_get_trakt_rating_from_map($mapType, $id);
-        if ($fetched === null) {
-            $fetched = nowscrobbling_fetch_specific_trakt_rating($type, $id);
-        }
+        if ($atts['show_rating']) {
+            // Ratings map only; no per-item direct fetch during render
+            $mapType = ($type === 'movie') ? 'movies' : (($type === 'episode') ? 'episodes' : 'shows');
+            $fetched = nowscrobbling_get_trakt_rating_from_map($mapType, $id);
             if ($fetched !== null && $fetched !== '') {
                 $rating_val = (string) $fetched;
             }

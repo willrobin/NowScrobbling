@@ -66,6 +66,39 @@ function nowscrobbling_metrics_update( $service, $field, $value = null ) {
         }
     }
     update_option( 'ns_metrics', $metrics, false );
+
+    // Time-series bucket for admin graph (hourly)
+    $ts = get_option('ns_metrics_ts', []);
+    if ( ! is_array($ts) ) { $ts = []; }
+    $bucket = date_i18n('YmdH', (int) current_time('timestamp'));
+    if ( ! isset($ts[$bucket]) || ! is_array($ts[$bucket]) ) { $ts[$bucket] = []; }
+    if ( ! isset($ts[$bucket][$service]) || ! is_array($ts[$bucket][$service]) ) {
+        $ts[$bucket][$service] = [
+            'total_requests' => 0,
+            'total_errors'   => 0,
+            'etag_hits'      => 0,
+            'cache_hits'     => 0,
+            'fallback_hits'  => 0,
+        ];
+    }
+    if ( is_array($field) ) {
+        foreach ( $field as $k => $v ) {
+            // Only store numeric values in time-series
+            if ( isset($ts[$bucket][$service][$k]) ) {
+                $ts[$bucket][$service][$k] = is_numeric($v) ? (int) $v : $ts[$bucket][$service][$k];
+            }
+        }
+    } else {
+        if ( isset($ts[$bucket][$service][$field]) ) {
+            $ts[$bucket][$service][$field] = (int) ( $ts[$bucket][$service][$field] ?? 0 ) + 1;
+        }
+    }
+    // Keep at most 96 buckets (~48h) to limit option size
+    if ( count($ts) > 96 ) {
+        ksort($ts); // oldest first by key string
+        while ( count($ts) > 96 ) { array_shift($ts); }
+    }
+    update_option('ns_metrics_ts', $ts, false);
 }
 
 /**
@@ -234,6 +267,24 @@ function nowscrobbling_fetch_api_data($url, $headers = [], $args = [], $cache_ke
 
     $response_code = wp_remote_retrieve_response_code($response);
     $response_body = wp_remote_retrieve_body($response);
+    // Store last seen rate-limit headers for known services
+    try {
+        $h_limit     = wp_remote_retrieve_header($response, 'x-ratelimit-limit');
+        $h_remaining = wp_remote_retrieve_header($response, 'x-ratelimit-remaining');
+        $h_reset     = wp_remote_retrieve_header($response, 'x-ratelimit-reset');
+        if ($h_limit || $h_remaining || $h_reset) {
+            $limits = get_option('ns_rate_limits', []);
+            if (!is_array($limits)) { $limits = []; }
+            if (!isset($limits[$service]) || !is_array($limits[$service])) { $limits[$service] = []; }
+            $limits[$service]['limit']     = is_numeric($h_limit) ? (int) $h_limit : ($limits[$service]['limit'] ?? null);
+            $limits[$service]['remaining'] = is_numeric($h_remaining) ? (int) $h_remaining : ($limits[$service]['remaining'] ?? null);
+            $limits[$service]['reset']     = is_numeric($h_reset) ? (int) $h_reset : ($limits[$service]['reset'] ?? null);
+            $limits[$service]['updated_at'] = (int) current_time('timestamp');
+            update_option('ns_rate_limits', $limits, false);
+        }
+    } catch (Exception $e) {
+        // ignore header parsing errors
+    }
     nowscrobbling_metrics_update( $service, 'total_requests' );
     nowscrobbling_metrics_update( $service, [ 'last_ms' => (int) round( ( microtime(true) - $start ) * 1000 ), 'last_status' => (int) $response_code ] );
 
@@ -312,7 +363,9 @@ function nowscrobbling_fetch_lastfm_data($method, $params = [])
         'format'  => 'json',
     ], $params);
     $url = NOWSCROBBLING_LASTFM_API_URL . '?method=user.' . rawurlencode($method) . '&' . http_build_query($params);
-    $data = nowscrobbling_fetch_api_data($url);
+    // Use ETag per URL to support 304 Not Modified
+    $etag_key = 'lastfm:' . substr(md5($url), 0, 24);
+    $data = nowscrobbling_fetch_api_data($url, [], [], $etag_key);
     if ($data === null) {
         nowscrobbling_set_cooldown('lastfm', 60);
     }
@@ -328,7 +381,8 @@ function nowscrobbling_fetch_lastfm_data($method, $params = [])
 function nowscrobbling_fetch_lastfm_scrobbles($context = 'default')
 {
     $result = nowscrobbling_get_or_set_transient(
-        nowscrobbling_build_cache_key('lastfm_scrobbles', ['limit' => (int) nowscrobbling_opt('lastfm_activity_limit', 3), 'context' => $context]),
+        // Unify cache key across contexts to avoid doppelte API-Calls
+        nowscrobbling_build_cache_key('lastfm_scrobbles', ['limit' => (int) nowscrobbling_opt('lastfm_activity_limit', 3)]),
         function () {
             $start = microtime(true);
             $data = nowscrobbling_fetch_lastfm_data('getrecenttracks', [
@@ -337,8 +391,7 @@ function nowscrobbling_fetch_lastfm_scrobbles($context = 'default')
             if (!$data || isset($data['error']) || empty($data['recenttracks']['track'])) {
                 return ['error' => 'Fehler beim Abrufen der Last.fm-Daten'];
             }
-            nowscrobbling_log("Last.fm API-Call ausgeführt und Daten gecacht.");
-            nowscrobbling_log("Letzte Last.fm Tracks: " . json_encode(array_slice($data['recenttracks']['track'], 0, 2)));
+            nowscrobbling_log("Last.fm API-Call ausgeführt und Daten gecacht (" . count($data['recenttracks']['track']) . " Einträge).");
             $duration = round((microtime(true) - $start) * 1000);
             nowscrobbling_log("Last.fm API Dauer: {$duration}ms");
             return array_map(function ($track) {
@@ -407,7 +460,7 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
     if ($cache_key) {
         $result = nowscrobbling_get_or_set_transient(
             nowscrobbling_build_cache_key($cache_key, $params),
-            function () use ($path, $params) {
+            function () use ($path, $params, $cache_key) {
                 $headers = [
                     'Content-Type'     => 'application/json',
                     'trakt-api-version' => '2',
@@ -415,7 +468,9 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
                 ];
                 $query = is_array($params) ? http_build_query($params) : '';
                 $url = NOWSCROBBLING_TRAKT_API_URL . ltrim($path, '/') . ($query ? "?$query" : '');
-                $data = nowscrobbling_fetch_api_data($url, $headers);
+                // Provide stable ETag key per request
+                $etag_key = ($cache_key ? $cache_key : 'trakt') . ':' . substr(md5($url), 0, 24);
+                $data = nowscrobbling_fetch_api_data($url, $headers, [], $etag_key);
                 if ($data === null) {
                     nowscrobbling_set_cooldown('trakt', 60);
                 }
@@ -433,7 +488,8 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
     ];
     $query = is_array($params) ? http_build_query($params) : '';
     $url = NOWSCROBBLING_TRAKT_API_URL . ltrim($path, '/') . ($query ? "?$query" : '');
-    $data = nowscrobbling_fetch_api_data($url, $headers);
+    $etag_key = ($cache_key ? $cache_key : 'trakt') . ':' . substr(md5($url), 0, 24);
+    $data = nowscrobbling_fetch_api_data($url, $headers, [], $etag_key);
     if ($data === null) {
         nowscrobbling_set_cooldown('trakt', 60);
     }
@@ -449,18 +505,18 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
 function nowscrobbling_fetch_trakt_activities($context = 'default')
 {
     $result = nowscrobbling_get_or_set_transient(
-        nowscrobbling_build_cache_key('trakt_activities', ['limit' => (int) nowscrobbling_opt('trakt_activity_limit', 25), 'context' => $context]),
+        // Unify cache key across contexts to avoid doppelte API-Calls
+        nowscrobbling_build_cache_key('trakt_activities', ['limit' => (int) nowscrobbling_opt('trakt_activity_limit', 25)]),
         function () {
             $start = microtime(true);
             $user = nowscrobbling_opt('trakt_user');
             $data = nowscrobbling_fetch_trakt_data('users/' . $user . '/history', [
                 'limit' => nowscrobbling_opt('trakt_activity_limit', 25)
-            ]);
+            ], 'trakt_activities');
             if (!$data || isset($data['error'])) {
                 return ['error' => 'Fehler beim Abrufen der Trakt-Daten'];
             }
-            nowscrobbling_log("Trakt API-Call ausgeführt und Daten gecacht.");
-            nowscrobbling_log("Letzte Trakt Aktivitäten: " . json_encode(array_slice($data, 0, 2)));
+            nowscrobbling_log("Trakt API-Call ausgeführt und Daten gecacht (" . count($data) . " Einträge).");
             $duration = round((microtime(true) - $start) * 1000);
             nowscrobbling_log("Trakt API Dauer: {$duration}ms");
             return $data;
@@ -623,6 +679,9 @@ function nowscrobbling_get_rewatch_count($id, $type) {
  * @return mixed The transient data.
  */
 function nowscrobbling_get_or_set_transient($transient_key, $callback, $expiration, $force_refresh = false) {
+    // In-request caching to coalesce duplicate work within the same PHP request
+    static $request_cache = [];
+
     // Allow global/constant override (e.g., via AJAX force_refresh)
     if ( defined('NOWSCROBBLING_FORCE_REFRESH') && NOWSCROBBLING_FORCE_REFRESH ) {
         $force_refresh = true;
@@ -662,8 +721,31 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
     // Try to get fallback data from a longer-lived cache
     $fallback_key = $transient_key . '_fallback';
     $fallback_data = get_transient($fallback_key);
+
+    // If no cache present and live fetch is not allowed in this context, serve fallback immediately
+    // Live fetch is allowed in: AJAX, cron, admin; disallowed for normal frontend SSR to improve TTFB
+    $allow_live_fetch = apply_filters('nowscrobbling_allow_live_fetch', ( defined('DOING_AJAX') && DOING_AJAX ) || ( function_exists('wp_doing_cron') && wp_doing_cron() ) || is_admin(), $transient_key);
+    if ( ! $force_refresh && ! $allow_live_fetch ) {
+        if ( $fallback_data !== false ) {
+            nowscrobbling_log("Using fallback data for {$transient_key} (live fetch disabled)");
+            $GLOBALS['nowscrobbling_last_source'] = 'fallback';
+            $GLOBALS['nowscrobbling_last_source_key'] = $transient_key;
+            // Update minimal meta
+            $meta = nowscrobbling_cache_meta( $transient_key, [
+                'last_access' => (int) current_time('timestamp'),
+                'fallback_key' => $fallback_key,
+                'fallback_exists' => 1,
+            ] );
+            $GLOBALS['nowscrobbling_last_meta'] = $meta;
+            return $fallback_data;
+        }
+    }
     
     try {
+        // Coalesce duplicate computations within the same request
+        if ( array_key_exists( $transient_key, $request_cache ) ) {
+            return $request_cache[$transient_key];
+        }
         $data = call_user_func($callback);
         
         if ($data !== null && $data !== false) {
@@ -687,11 +769,12 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
             
             $GLOBALS['nowscrobbling_last_source'] = 'fresh';
             $GLOBALS['nowscrobbling_last_source_key'] = $transient_key;
-            $expires_local = date_i18n( get_option('date_format') . ' ' . get_option('time_format'), time() + (int) $expiration );
+            // Use WP-local timestamp for consistency with log timestamps
+            $now = (int) current_time('timestamp');
+            $expires_local = date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $now + (int) $expiration );
             nowscrobbling_log("Transient gesetzt: {$transient_key}, gültig bis " . $expires_local);
             // Save meta for diagnostics
             $service = ( strpos( $transient_key, 'lastfm' ) !== false ) ? 'lastfm' : ( ( strpos( $transient_key, 'trakt' ) !== false ) ? 'trakt' : 'generic' );
-            $now = time();
             $meta = nowscrobbling_cache_meta( $transient_key, [
                 'saved_at' => $now,
                 'expires_at' => $now + (int) $expiration,
@@ -704,6 +787,8 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
                 'fallback_exists' => 1,
             ] );
             $GLOBALS['nowscrobbling_last_meta'] = $meta;
+            // Put into in-request cache for subsequent callers
+            $request_cache[$transient_key] = $data;
         } else {
             // If callback failed, try to use fallback data
             if ($fallback_data !== false) {

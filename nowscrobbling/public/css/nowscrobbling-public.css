@@ -1,10 +1,10 @@
 /* NowScrobbling Public Styles */
 :root {
   /* Color variables for easy customization */
-  --ns-primary-color: #2690ff;
+  --ns-primary-color: rgb(38, 144, 255);
   --ns-primary-light: rgba(38, 144, 255, 0.05);
   --ns-primary-border: rgba(38, 144, 255, 0.15);
-  --ns-primary-hover: rgba(38, 144, 255, 0.75);
+  --ns-primary-hover: rgb(38, 143, 255);
   --ns-text-color: #1a1a1a;
   --ns-text-muted: #666;
   --ns-error-color: #cc0000;
@@ -37,7 +37,7 @@
 
 .bubble {
     background-color: transparent;
-    border: 1px solid transparent;
+    border: 1px solid var(--ns-primary-border);
     text-decoration: none;
     max-width: fit-content;
     padding: var(--ns-padding);
@@ -50,8 +50,8 @@
 }
 
 .bubble:hover {
-    border-color: var(--ns-primary-border);
-    border-radius: 6px;
+    border-color: var(--ns-primary-hover);
+    border-radius: var(--ns-border-radius);
     color: var(--ns-primary-color);
     transform: translateY(-1px);
 }
