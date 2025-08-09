@@ -125,7 +125,7 @@ add_action('admin_init', function () {
         ['trakt_activity_limit', 'Anzahl der Trakt Aktivitäten', 'number', ['min' => 1, 'step' => 1, 'default' => 5]],
         ['nowscrobbling_debug_log', 'Debug-Log aktivieren', 'checkbox', ['default' => 0]],
         // AJAX is always enabled; option removed
-        ['ns_enable_rewatch', 'Rewatch-Zählung aktivieren (teure Abfragen)', 'checkbox', ['default' => 0]],
+        ['ns_enable_rewatch', 'Rewatch-Zählung aktivieren (sparsam, paginiert)', 'checkbox', ['default' => 0]],
         ['ns_nowplaying_interval', 'Polling: Intervall für Now-Playing (Sekunden)', 'number', ['min' => 5, 'step' => 1, 'default' => 20]],
         ['ns_max_interval', 'Polling: Maximalintervall (Sekunden)', 'number', ['min' => 30, 'step' => 5, 'default' => 300]],
         ['ns_backoff_multiplier', 'Polling: Backoff Multiplikator', 'number', ['min' => 1, 'step' => 0.1, 'default' => 2]],

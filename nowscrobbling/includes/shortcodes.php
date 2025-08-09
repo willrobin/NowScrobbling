@@ -49,6 +49,7 @@ function nowscrobbling_generate_shortcode_output($items, $format_callback) {
 // Last.fm Indicator Shortcode
 function nowscr_lastfm_indicator_shortcode() {
     // Use correct method name and existing fetchers; cache very shortly for SSR
+    // Prefer existing cache/fallback data; keep TTL short for SSR, but never empty
     $now = nowscrobbling_get_or_set_transient('my_lastfm_now_playing', function () {
         return nowscrobbling_fetch_lastfm_data('getrecenttracks', ['limit' => 1]);
     }, max( 30, (int) get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS ) );

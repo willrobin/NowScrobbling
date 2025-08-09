@@ -619,16 +619,21 @@ function nowscrobbling_get_trakt_ratings_map($type) {
     $cache_key = nowscrobbling_build_cache_key('trakt_ratings_map', ['type' => $type]);
     $map = nowscrobbling_get_or_set_transient($cache_key, function() use ($type) {
         $user = nowscrobbling_opt('trakt_user');
-        $list = nowscrobbling_fetch_trakt_data("users/$user/ratings/$type");
+        // Paginierte Abfrage: Trakt liefert i.d.R. in Seiten; wir holen bis zu 5 Seiten (1000 Items) und mergen
         $out = [];
-        if (is_array($list)) {
+        $page = 1;
+        $per_page = 200; // Trakt max 200
+        while ($page <= 5) {
+            $list = nowscrobbling_fetch_trakt_data("users/$user/ratings/$type", [ 'page' => $page, 'limit' => $per_page ], "trakt_ratings_$type");
+            if (!is_array($list) || empty($list)) { break; }
             foreach ($list as $entry) {
-                if (!isset($entry[$type === 'episodes' ? 'episode' : rtrim($type,'s')]['ids']['trakt'])) { continue; }
-                $tid = $entry[$type === 'episodes' ? 'episode' : rtrim($type,'s')]['ids']['trakt'];
-                if (isset($entry['rating'])) {
-                    $out[(int)$tid] = (int)$entry['rating'];
-                }
+                $bucket = ($type === 'episodes') ? 'episode' : rtrim($type,'s');
+                if (!isset($entry[$bucket]['ids']['trakt'])) { continue; }
+                $tid = (int) $entry[$bucket]['ids']['trakt'];
+                if (isset($entry['rating'])) { $out[$tid] = (int) $entry['rating']; }
             }
+            if (count($list) < $per_page) { break; }
+            $page++;
         }
         return $out;
     }, DAY_IN_SECONDS);
@@ -650,16 +655,27 @@ function nowscrobbling_get_trakt_rating_from_map($type, $id) {
  * @return int The rewatch count.
  */
 function nowscrobbling_get_rewatch_count($id, $type) {
-    $cache_key = nowscrobbling_build_cache_key('trakt_rewatch', [ 'type' => $type, 'id' => (int) $id ]);
-    $history = nowscrobbling_get_or_set_transient($cache_key, function() use ($id, $type) {
+    $id = (int) $id;
+    $type = in_array($type, ['movies','episodes','shows'], true) ? $type : 'movies';
+    $cache_key = nowscrobbling_build_cache_key('trakt_rewatch', [ 'type' => $type, 'id' => $id ]);
+    $count = nowscrobbling_get_or_set_transient($cache_key, function() use ($id, $type) {
+        // Schlank: Nur Kopf der History ermitteln und total items aus Header lesen
         $user = nowscrobbling_opt('trakt_user');
         $path = "users/$user/history/$type/$id";
-        return nowscrobbling_fetch_trakt_data($path);
+        // Nutze fetch_trakt_data mit ETag und kleiner Limit/Page, um Header mitzunehmen
+        // Hinweis: nowscrobbling_fetch_api_data schreibt Rate-Limits, aber nicht total items;
+        // wir nutzen daher eine kleine Komplettliste, aber capped per_page.
+        $page = 1; $per_page = 200; $total = 0; $acc = 0;
+        while ($page <= 5) {
+            $resp = nowscrobbling_fetch_trakt_data($path, [ 'page' => $page, 'limit' => $per_page ], 'trakt_rewatch');
+            if (!is_array($resp) || empty($resp)) { break; }
+            $acc += count($resp);
+            if (count($resp) < $per_page) { break; }
+            $page++;
+        }
+        return $acc;
     }, DAY_IN_SECONDS);
-    if (!is_array($history)) {
-        return 0;
-    }
-    return count($history);
+    return (int) $count;
 }
 
 /**
@@ -716,8 +732,8 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
     $fallback_data = get_transient($fallback_key);
 
     // If no cache present and live fetch is not allowed in this context, serve fallback immediately
-    // Live fetch is allowed in: AJAX, cron, admin; disallowed for normal frontend SSR to improve TTFB
-    $allow_live_fetch = apply_filters('nowscrobbling_allow_live_fetch', ( defined('DOING_AJAX') && DOING_AJAX ) || ( function_exists('wp_doing_cron') && wp_doing_cron() ) || is_admin(), $transient_key);
+    // Live fetch is allowed in: AJAX, cron (admin is opted-out by default and can enable via filter)
+    $allow_live_fetch = apply_filters('nowscrobbling_allow_live_fetch', ( defined('DOING_AJAX') && DOING_AJAX ) || ( function_exists('wp_doing_cron') && wp_doing_cron() ), $transient_key);
     if ( ! $force_refresh && ! $allow_live_fetch ) {
         if ( $fallback_data !== false ) {
             nowscrobbling_log("Using fallback data for {$transient_key} (live fetch disabled)");
@@ -735,6 +751,27 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
     }
     
     try {
+        // Prefer fallback data even if live fetch is allowed, unless explicitly forced
+        if ( ! $force_refresh && $fallback_data !== false ) {
+            nowscrobbling_log("Using fallback data for {$transient_key} (preferred over live fetch)");
+            $GLOBALS['nowscrobbling_last_source'] = 'fallback';
+            $GLOBALS['nowscrobbling_last_source_key'] = $transient_key;
+            if ( strpos( $transient_key, 'lastfm' ) !== false ) {
+                nowscrobbling_metrics_update( 'lastfm', 'fallback_hits' );
+            } elseif ( strpos( $transient_key, 'trakt' ) !== false ) {
+                nowscrobbling_metrics_update( 'trakt', 'fallback_hits' );
+            } else {
+                nowscrobbling_metrics_update( 'generic', 'fallback_hits' );
+            }
+            $meta = nowscrobbling_cache_meta( $transient_key, [
+                'last_access' => (int) current_time('timestamp'),
+                'fallback_key' => $fallback_key,
+                'fallback_exists' => 1,
+            ] );
+            $GLOBALS['nowscrobbling_last_meta'] = $meta;
+            return $fallback_data;
+        }
+
         // Coalesce duplicate computations within the same request
         if ( array_key_exists( $transient_key, $request_cache ) ) {
             return $request_cache[$transient_key];
