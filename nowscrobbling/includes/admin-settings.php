@@ -18,6 +18,32 @@ function nowscrobbling_admin_menu()
     add_options_page('NowScrobbling Einstellungen', 'NowScrobbling', 'manage_options', 'nowscrobbling-settings', 'nowscrobbling_settings_page');
 }
 
+// Enqueue Frontend AJAX script on admin settings page to mirror live behavior
+add_action('admin_enqueue_scripts', function($hook){
+    if ($hook !== 'settings_page_nowscrobbling-settings') { return; }
+    $js_rel_path = 'public/js/ajax-load.js';
+    $js_path     = NOWSCROBBLING_PATH . $js_rel_path;
+    $version     = file_exists( $js_path ) ? (string) filemtime( $js_path ) : NOWSCROBBLING_VERSION;
+    wp_enqueue_script(
+        'nowscrobbling-ajax',
+        NOWSCROBBLING_URL . $js_rel_path,
+        [ 'jquery' ],
+        $version,
+        true
+    );
+    wp_localize_script( 'nowscrobbling-ajax', 'nowscrobbling_ajax', [
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'nowscrobbling_nonce' ),
+        // Übernehme Polling-Optionen aus Einstellungen
+        'polling'  => [
+            'nowplaying_interval' => 20000,
+            'max_interval'        => 300000,
+            'backoff_multiplier'  => 2,
+        ],
+        'debug'    => (bool) get_option( 'nowscrobbling_debug_log', false ),
+    ] );
+});
+
 function nowscrobbling_register_settings()
 {
     // Text options
@@ -164,9 +190,29 @@ function nowscrobbling_settings_page()
         $results = nowscrobbling_test_api_connections();
         update_option('ns_last_api_test', [ 'ts' => current_time('mysql'), 'results' => $results ], false);
     }
+    
     if (isset($_POST['reset_metrics']) && check_admin_referer('nowscrobbling_reset_metrics', 'nowscrobbling_metrics_nonce')) {
         delete_option('ns_metrics');
         echo '<div class="updated"><p>Metriken wurden zurückgesetzt.</p></div>';
+    }
+    
+    // Handler für Debug-Log-Aktivierung/Deaktivierung
+    if (isset($_POST['toggle_debug']) && check_admin_referer('nowscrobbling_toggle_debug', 'ns_toggle_debug_nonce')) {
+        $current_value = (int) get_option('nowscrobbling_debug_log', 0);
+        $new_value = $current_value ? 0 : 1; // Toggle zwischen 0 und 1
+        update_option('nowscrobbling_debug_log', $new_value);
+        
+        // Log-Eintrag und Bestätigung
+        if ($new_value) {
+            // Direkter Eintrag, da die Log-Funktion den Status erst prüft
+            $log = get_option('nowscrobbling_log', []);
+            if (!is_array($log)) { $log = []; }
+            $log[] = '[' . current_time('mysql') . '] Debug-Log wurde manuell aktiviert';
+            update_option('nowscrobbling_log', $log);
+            echo '<div class="updated"><p>Debug-Log wurde aktiviert.</p></div>';
+        } else {
+            echo '<div class="updated"><p>Debug-Log wurde deaktiviert.</p></div>';
+        }
     }
     
     // Precompute config flags used for UI state
@@ -203,7 +249,32 @@ function nowscrobbling_settings_page()
             /* kompakter Status-Block */
             .ns-status-table th, .ns-status-table td{padding:4px 8px}
             .ns-status-table tr{line-height:1.2}
+            /* Einheitliche Formular-Optik */
+            .ns-service{border:1px solid #e3e5e8;border-radius:6px;padding:12px;background:#fff}
+            .ns-service h3{margin:0 0 6px 0;font-size:16px}
+            .ns-form{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+            .ns-field{display:flex;flex-direction:column;gap:4px}
+            .ns-field label{font-weight:600}
+            .ns-help{font-size:12px;color:#555;margin:0}
+            .ns-control input[type="text"],
+            .ns-control input[type="password"],
+            .ns-control input[type="number"],
+            .ns-control select{min-width:260px}
+            .ns-statusline{margin-top:6px}
         </style>
+        <script>
+        (function(){
+            function updateCountdown(id){
+                var el = document.getElementById(id);
+                if(!el) return; var t = parseInt(el.getAttribute('data-ts')||'0',10);
+                if(!t) return; var now = Math.floor(Date.now()/1000); var diff = t - now;
+                if (diff < 0) { el.textContent = '· fällig'; return; }
+                function fmt(s){ var m = Math.floor(s/60), r = s%60; return (m>0? (m+'m '):'') + r + 's'; }
+                el.textContent = '· in ' + fmt(diff);
+            }
+            setInterval(function(){ updateCountdown('ns-cron-5min-next'); updateCountdown('ns-cron-1min-next'); }, 1000);
+        })();
+        </script>
         
         <!-- Status Overview -->
         <div class="card" style="max-width: 100%; margin-bottom: 20px;">
@@ -214,11 +285,22 @@ function nowscrobbling_settings_page()
                     <td><?php echo esc_html(NOWSCROBBLING_VERSION); ?></td>
                 </tr>
                 <tr>
-                    <th>Cron Job Status:</th>
+                    <th>Cron (5 Min):</th>
                     <td>
-                        <?php $cron_scheduled = wp_next_scheduled('nowscrobbling_cache_refresh'); ?>
-                        <span class="ns-badge <?php echo $cron_scheduled ? 'ok' : 'warn'; ?>">
-                            <?php echo $cron_scheduled ? ('Geplant · nächster Lauf in ' . esc_html(human_time_diff(time(), $cron_scheduled))) : 'Nicht geplant'; ?>
+                        <?php $next_cache = wp_next_scheduled('nowscrobbling_cache_refresh'); ?>
+                        <span class="ns-badge <?php echo $next_cache ? 'ok' : 'warn'; ?>"><?php echo $next_cache ? 'Geplant' : 'Nicht geplant'; ?></span>
+                        <span id="ns-cron-5min-next" data-ts="<?php echo esc_attr((string) ($next_cache ?: 0)); ?>" style="opacity:.66;">
+                            <?php echo $next_cache ? ('· nächster Lauf: ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $next_cache ) ) . ' (' . esc_html(human_time_diff(time(), $next_cache)) . ')') : ''; ?>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Cron (1 Min, Now-Playing):</th>
+                    <td>
+                        <?php $next_tick = wp_next_scheduled('nowscrobbling_nowplaying_tick'); ?>
+                        <span class="ns-badge <?php echo $next_tick ? 'ok' : 'warn'; ?>"><?php echo $next_tick ? 'Geplant' : 'Nicht geplant'; ?></span>
+                        <span id="ns-cron-1min-next" data-ts="<?php echo esc_attr((string) ($next_tick ?: 0)); ?>" style="opacity:.66;">
+                            <?php echo $next_tick ? ('· nächster Lauf: ' . esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $next_tick ) ) . ' (' . esc_html(human_time_diff(time(), $next_tick)) . ')') : ''; ?>
                         </span>
                     </td>
                 </tr>
@@ -275,12 +357,19 @@ function nowscrobbling_settings_page()
 
                 <div class="ns-block" style="margin:12px 0;">
                     <div class="ns-grid">
-                        <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
-                            <h3 style="margin:0 0 6px 0;">Last.fm</h3>
-                            <table class="form-table" style="margin-top:0;">
-                                <tr><th>Benutzername</th><td><?php nowscrobbling_setting_callback('lastfm_user'); ?></td></tr>
-                                <tr><th>API Key</th><td><?php nowscrobbling_setting_callback('lastfm_api_key','password'); ?></td></tr>
-                                <tr><th>Status</th><td>
+                        <div class="ns-col ns-service">
+                            <h3>Last.fm</h3>
+                            <div class="ns-form">
+                                <div class="ns-field">
+                                    <label for="lastfm_user">Benutzername</label>
+                                    <div class="ns-control"><?php nowscrobbling_setting_callback('lastfm_user'); ?></div>
+                                </div>
+                                <div class="ns-field">
+                                    <label for="lastfm_api_key">API Key</label>
+                                    <div class="ns-control"><?php nowscrobbling_setting_callback('lastfm_api_key','password'); ?></div>
+                                    <p class="ns-help">Wird für alle Last.fm-Shortcodes benötigt.</p>
+                                </div>
+                                <div class="ns-statusline">
                                     <?php 
                                         $cred_hash = function_exists('nowscrobbling_get_service_cred_hash') ? nowscrobbling_get_service_cred_hash('lastfm') : '';
                                         $last_success_map = get_option('ns_last_success', []);
@@ -294,15 +383,22 @@ function nowscrobbling_settings_page()
                                         $label = $last_success ? ('Zuletzt erfolgreich: ' . $last_success) : 'Noch keine erfolgreiche Antwort';
                                         echo '<span class="ns-badge ' . esc_attr($color) . '" title="Letzte erfolgreiche Antwort">' . esc_html($label) . '</span>';
                                     ?>
-                                </td></tr>
-                            </table>
+                                </div>
+                            </div>
                         </div>
-                        <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
-                            <h3 style="margin:0 0 6px 0;">Trakt</h3>
-                            <table class="form-table" style="margin-top:0;">
-                                <tr><th>Benutzername</th><td><?php nowscrobbling_setting_callback('trakt_user'); ?></td></tr>
-                                <tr><th>Client ID</th><td><?php nowscrobbling_setting_callback('trakt_client_id','password'); ?></td></tr>
-                                <tr><th>Status</th><td>
+                        <div class="ns-col ns-service">
+                            <h3>Trakt</h3>
+                            <div class="ns-form">
+                                <div class="ns-field">
+                                    <label for="trakt_user">Benutzername</label>
+                                    <div class="ns-control"><?php nowscrobbling_setting_callback('trakt_user'); ?></div>
+                                </div>
+                                <div class="ns-field">
+                                    <label for="trakt_client_id">Client ID</label>
+                                    <div class="ns-control"><?php nowscrobbling_setting_callback('trakt_client_id','password'); ?></div>
+                                    <p class="ns-help">Wird für alle Trakt-Shortcodes benötigt.</p>
+                                </div>
+                                <div class="ns-statusline">
                                     <?php 
                                         $cred_hash = function_exists('nowscrobbling_get_service_cred_hash') ? nowscrobbling_get_service_cred_hash('trakt') : '';
                                         $last_success_map = get_option('ns_last_success', []);
@@ -316,24 +412,73 @@ function nowscrobbling_settings_page()
                                         $label = $last_success ? ('Zuletzt erfolgreich: ' . $last_success) : 'Noch keine erfolgreiche Antwort';
                                         echo '<span class="ns-badge ' . esc_attr($color) . '" title="Letzte erfolgreiche Antwort">' . esc_html($label) . '</span>';
                                     ?>
-                                </td></tr>
-                            </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Debug und erweiterte Einstellungen -->
+                <div class="card" style="max-width: 100%; margin: 20px 0;">
+                    <h2 class="title">Erweiterte Einstellungen</h2>
+                    <p class="description">Konfigurieren Sie Cache-Dauer, Limits und Debug-Optionen.</p>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="nowscrobbling_debug_log">Debug-Log</label></th>
+                            <td><?php nowscrobbling_setting_callback('nowscrobbling_debug_log', 'checkbox'); ?>
+                            <p class="description">Aktiviert ausführliches Logging für die Fehlersuche.</p></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="ns_enable_rewatch">Rewatch-Zählung</label></th>
+                            <td><?php nowscrobbling_setting_callback('ns_enable_rewatch', 'checkbox'); ?>
+                            <p class="description">Aktiviert die Erkennung und Anzeige von mehrfach gesehenen Filmen/Serien.</p></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="cache_duration">Allgemeine Cache-Dauer (Minuten)</label></th>
+                            <td><?php nowscrobbling_setting_callback('cache_duration', 'number', ['min' => 1, 'step' => 1]); ?></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="lastfm_cache_duration">Last.fm Cache-Dauer (Minuten)</label></th>
+                            <td><?php nowscrobbling_setting_callback('lastfm_cache_duration', 'number', ['min' => 1, 'step' => 1]); ?></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="trakt_cache_duration">Trakt Cache-Dauer (Minuten)</label></th>
+                            <td><?php nowscrobbling_setting_callback('trakt_cache_duration', 'number', ['min' => 1, 'step' => 1]); ?></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="lastfm_activity_limit">Last.fm Aktivitäten</label></th>
+                            <td><?php nowscrobbling_setting_callback('lastfm_activity_limit', 'number', ['min' => 1, 'step' => 1]); ?></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="trakt_activity_limit">Trakt Aktivitäten</label></th>
+                            <td><?php nowscrobbling_setting_callback('trakt_activity_limit', 'number', ['min' => 1, 'step' => 1]); ?></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="ns_nowplaying_interval">Polling-Intervall (Sekunden)</label></th>
+                            <td><?php nowscrobbling_setting_callback('ns_nowplaying_interval', 'number', ['min' => 5, 'step' => 1]); ?>
+                            <p class="description">Intervall für Now-Playing Updates.</p></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="ns_max_interval">Max. Intervall (Sekunden)</label></th>
+                            <td><?php nowscrobbling_setting_callback('ns_max_interval', 'number', ['min' => 30, 'step' => 5]); ?>
+                            <p class="description">Maximales Intervall bei Backoff-Strategie.</p></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="ns_backoff_multiplier">Backoff-Multiplikator</label></th>
+                            <td><?php nowscrobbling_setting_callback('ns_backoff_multiplier', 'number', ['min' => 1, 'step' => 0.1]); ?>
+                            <p class="description">Multiplikator für das Intervall bei fehlenden Updates.</p></td>
+                        </tr>
+                    </table>
                 
-
-                
-
-                <?php submit_button('Zugangsdaten speichern'); ?>
+                <?php submit_button('Einstellungen speichern'); ?>
             </form>
         </div>
 
         <!-- Nutzung (Graph) -->
         <div class="card" style="max-width: 100%; margin-bottom: 20px;">
-            <h2 class="title">Nutzung</h2>
-            <p style="margin:6px 0 12px; color:#555;">Anfragen pro Stunde (letzte 48 Stunden) für Last.fm und Trakt. Zusätzlich Badges für die letzten 24 Stunden.</p>
+            <h2 class="title">Nutzung (letzte 48 Stunden)</h2>
+            <p style="margin:6px 0 12px; color:#555;">Anfragen pro Stunde (blau) und Cache-Hits (grün). Ziel: möglichst viele Cache-/ETag-Hits, wenig API-Requests.</p>
             <?php
                 $ts = get_option('ns_metrics_ts', []);
                 $now_ts = (int) current_time('timestamp');
@@ -503,15 +648,185 @@ function nowscrobbling_settings_page()
             </details>
         </div>
 
+        <!-- Shortcode Generator -->
+        <div class="card" style="max-width: 100%; margin-bottom: 20px;">
+            <h2 class="title">Shortcode-Generator</h2>
+            <p class="description">Wähle einen Shortcode und stelle die Optionen ein. Vorschau und Code aktualisieren sich automatisch.</p>
+            <div class="ns-grid" style="grid-template-columns: 360px 1fr; align-items:flex-start;">
+                <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
+                    <label for="ns-gen-shortcode" style="display:block;font-weight:600;margin-bottom:6px;">Shortcode</label>
+                    <select id="ns-gen-shortcode" style="min-width:100%">
+                        <?php if (function_exists('nowscrobbling_list_shortcodes')): foreach (nowscrobbling_list_shortcodes() as $tag): ?>
+                            <option value="<?php echo esc_attr($tag); ?>"><?php echo esc_html($tag); ?></option>
+                        <?php endforeach; endif; ?>
+                    </select>
+                    <div id="ns-gen-fields" style="margin-top:10px;"></div>
+                </div>
+                <div class="ns-col" style="border:1px solid #e3e5e8;border-radius:6px;padding:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+                        <strong>Code</strong>
+                        <button type="button" class="button" id="ns-gen-copy">Kopieren</button>
+                    </div>
+                    <code id="ns-gen-code" style="display:block;background:#f6f7f7;border:1px solid #ccd0d4;padding:6px;border-radius:4px;white-space:pre-wrap;"></code>
+                    <div style="margin-top:10px;">
+                        <strong>Vorschau</strong>
+                        <div id="ns-gen-preview" class="nowscrobbling" data-nowscrobbling-shortcode="" data-ns-hash="" style="margin-top:6px;"></div>
+                        <div id="ns-gen-source" class="ns-alt" style="margin-top:6px;color:#555;"></div>
+                    </div>
+                </div>
+            </div>
+            <script>
+            (function(){
+                const nonce = '<?php echo wp_create_nonce('nowscrobbling_nonce'); ?>';
+                const API_URL = ajaxurl;
+                // Supported attributes per shortcode
+                const cfg = {
+                    'nowscr_lastfm_indicator': [],
+                    'nowscr_lastfm_history': [ {key:'max_length', label:'Max. Länge', type:'number', min:1, step:1, def:45} ],
+                    'nowscr_lastfm_top_artists': [ {key:'period', label:'Zeitraum', type:'select', choices:{'7day':'7 Tage','overall':'Gesamt'}}, {key:'limit', label:'Anzahl', type:'number', min:1, step:1, def:5}, {key:'max_length', label:'Max. Länge', type:'number', min:1, step:1, def:15} ],
+                    'nowscr_lastfm_top_albums': [ {key:'period', label:'Zeitraum', type:'select', choices:{'7day':'7 Tage','overall':'Gesamt'}}, {key:'limit', label:'Anzahl', type:'number', min:1, step:1, def:5}, {key:'max_length', label:'Max. Länge', type:'number', min:1, step:1, def:45} ],
+                    'nowscr_lastfm_top_tracks': [ {key:'period', label:'Zeitraum', type:'select', choices:{'7day':'7 Tage','overall':'Gesamt'}}, {key:'limit', label:'Anzahl', type:'number', min:1, step:1, def:5}, {key:'max_length', label:'Max. Länge', type:'number', min:1, step:1, def:45} ],
+                    'nowscr_lastfm_lovedtracks': [ {key:'limit', label:'Anzahl', type:'number', min:1, step:1, def:5}, {key:'max_length', label:'Max. Länge', type:'number', min:1, step:1, def:45} ],
+                    'nowscr_trakt_indicator': [],
+                    'nowscr_trakt_history': [ {key:'limit', label:'Anzahl', type:'number', min:1, step:1, def:1}, {key:'show_year', label:'Jahr zeigen', type:'checkbox'}, {key:'show_rating', label:'Rating zeigen', type:'checkbox'}, {key:'show_rewatch', label:'Rewatch zeigen', type:'checkbox'}, {key:'max_length', label:'Max. Länge', type:'number', min:0, step:1, def:0} ],
+                    'nowscr_trakt_last_movie': [ {key:'limit', label:'Anzahl', type:'number', min:1, step:1, def:3}, {key:'show_year', label:'Jahr zeigen', type:'checkbox'}, {key:'show_rating', label:'Rating zeigen', type:'checkbox'}, {key:'show_rewatch', label:'Rewatch zeigen', type:'checkbox'} ],
+                    'nowscr_trakt_last_show': [ {key:'show_year', label:'Jahr zeigen', type:'checkbox'}, {key:'show_rating', label:'Rating zeigen', type:'checkbox'}, {key:'show_rewatch', label:'Rewatch zeigen', type:'checkbox'} ],
+                    'nowscr_trakt_last_episode': [ {key:'show_year', label:'Jahr zeigen', type:'checkbox'}, {key:'show_rating', label:'Rating zeigen', type:'checkbox'}, {key:'show_rewatch', label:'Rewatch zeigen', type:'checkbox'} ],
+                };
+                const sel = document.getElementById('ns-gen-shortcode');
+                const fields = document.getElementById('ns-gen-fields');
+                const code = document.getElementById('ns-gen-code');
+                const copyBtn = document.getElementById('ns-gen-copy');
+                const preview = document.getElementById('ns-gen-preview');
+                const sourceBox = document.getElementById('ns-gen-source');
+
+                function renderFields(tag){
+                    const spec = cfg[tag] || [];
+                    fields.innerHTML = '';
+                    spec.forEach(f => {
+                        const id = 'nsf_'+tag+'_'+f.key;
+                        const wrap = document.createElement('div');
+                        wrap.style.margin = '6px 0';
+                        const label = document.createElement('label');
+                        label.setAttribute('for', id); label.textContent = f.label || f.key; label.style.display='block';
+                        wrap.appendChild(label);
+                        let input;
+                        if (f.type === 'select'){
+                            input = document.createElement('select');
+                            Object.keys(f.choices||{}).forEach(k=>{ const opt=document.createElement('option'); opt.value=k; opt.textContent=f.choices[k]; input.appendChild(opt); });
+                        } else if (f.type === 'checkbox'){
+                            input = document.createElement('input'); input.type='checkbox';
+                        } else {
+                            input = document.createElement('input'); input.type='number'; if (f.min!=null) input.min=f.min; if (f.step!=null) input.step=f.step;
+                        }
+                        input.id = id; input.dataset.key = f.key; if (f.def!=null && f.type!=='checkbox') input.value = f.def;
+                        input.addEventListener('input', updateAll); input.addEventListener('change', updateAll);
+                        wrap.appendChild(input);
+                        fields.appendChild(wrap);
+                    });
+                }
+
+                function collectAttrs(tag){
+                    const out = {};
+                    const spec = cfg[tag] || [];
+                    spec.forEach(f => {
+                        const el = document.getElementById('nsf_'+tag+'_'+f.key);
+                        if (!el) return;
+                        if (f.type === 'checkbox') { if (el.checked) out[f.key] = 'true'; }
+                        else if (el.value !== '') { out[f.key] = String(el.value); }
+                    });
+                    return out;
+                }
+
+                function buildShortcode(tag, attrs){
+                    const parts = Object.keys(attrs).map(k=> `${k}="${attrs[k]}"`);
+                    return '[' + tag + (parts.length? ' ' + parts.join(' ') : '') + ']';
+                }
+
+                async function renderPreview(tag, attrs){
+                    try {
+                        // Set data attribute for compatibility with ajax-load.js
+                        preview.setAttribute('data-nowscrobbling-shortcode', tag);
+                        const params = new URLSearchParams({ action:'nowscrobbling_render_shortcode', shortcode: tag, _wpnonce: nonce });
+                        if (attrs && Object.keys(attrs).length){ params.append('attrs', JSON.stringify(attrs)); }
+                        const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+                        const json = await res.json(); if (!json || !json.success || !json.data) return;
+                        const data = json.data;
+                        const tmp = document.createElement('div'); tmp.innerHTML = data.html; const wrap = tmp.querySelector('.nowscrobbling');
+                        if (wrap){ preview.innerHTML = wrap.innerHTML; if (data.hash) preview.setAttribute('data-ns-hash', data.hash); if (wrap.getAttribute('data-ns-nowplaying')==='1') preview.setAttribute('data-ns-nowplaying','1'); else preview.removeAttribute('data-ns-nowplaying'); } else { preview.innerHTML = data.html; }
+                        // Quelle anzeigen
+                        const src = data.source || 'unbekannt'; const meta = data.meta || {}; let badge = 'warn'; if (src==='fresh') badge='ok'; else if (src==='cache') badge='cache'; else if (src==='miss') badge='err';
+                        let extra = [];
+                        if (meta.expires_at) extra.push('läuft ab: ' + new Date(meta.expires_at*1000).toLocaleString());
+                        if (meta.ttl) extra.push('TTL: ' + Math.round((meta.ttl||0)/60) + 'm');
+                        sourceBox.innerHTML = '<span class="ns-badge '+badge+'">'+src+'</span>' + (extra.length? ' <span class="ns-alt">'+extra.join(' · ')+'</span>' : '');
+                    } catch (e) {}
+                }
+
+                function updateAll(){
+                    const tag = sel.value;
+                    const attrs = collectAttrs(tag);
+                    const sc = buildShortcode(tag, attrs);
+                    code.textContent = sc;
+                    renderPreview(tag, attrs);
+                }
+
+                copyBtn.addEventListener('click', function(){ try { navigator.clipboard.writeText(code.textContent||''); copyBtn.textContent='Kopiert!'; setTimeout(()=> copyBtn.textContent='Kopieren', 1200); } catch(e){} });
+                sel.addEventListener('change', function(){ renderFields(sel.value); updateAll(); });
+                // Init
+                renderFields(sel.value); updateAll();
+            })();
+            </script>
+        </div>
+
         <!-- Debug Log -->
         <div class="card" style="max-width: 100%; margin-bottom: 20px;">
             <details class="ns-block" open>
                 <summary>Debug-Log</summary>
-                <div style="max-height:300px;overflow:auto;font-size:12px;">
+                <div style="display:flex;gap:12px;align-items:center;margin:8px 0;flex-wrap:wrap;">
+                    <input type="text" id="ns-log-filter" placeholder="Filter (z. B. lastfm, trakt, error)" style="min-width:300px;" />
+                    
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+                        <span class="ns-badge <?php echo get_option('nowscrobbling_debug_log', 0) ? 'ok' : 'err'; ?>">
+                            Debug-Log: <?php echo get_option('nowscrobbling_debug_log', 0) ? 'Aktiviert' : 'Deaktiviert'; ?>
+                        </span>
+                        
+                        <form method="post" style="margin:0;">
+                            <?php wp_nonce_field('nowscrobbling_toggle_debug', 'ns_toggle_debug_nonce'); ?>
+                            <button type="submit" name="toggle_debug" class="button button-small">
+                                <?php echo get_option('nowscrobbling_debug_log', 0) ? 'Deaktivieren' : 'Aktivieren'; ?>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
+                    <div class="ns-alt">
+                        Letzte 200 Einträge
+                        <?php
+                        // Prüfe, wie viele Einträge wirklich vorhanden sind
+                        $log = get_option('nowscrobbling_log', []);
+                        $log_count = is_array($log) ? count($log) : 0;
+                        echo " ($log_count gespeichert)";
+                        ?>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <button type="button" class="button" id="ns-log-refresh" onclick="window.location.reload();">Aktualisieren</button>
+                        <button type="button" class="button" id="ns-log-copy">Log kopieren</button>
+                    </div>
+                </div>
+                <div id="ns-log" style="max-height:360px;overflow:auto;font-size:12px;border:1px solid #e3e5e8;padding:8px;background:#fff;white-space:pre-wrap">
                 <?php
                     $log = get_option('nowscrobbling_log', []);
-                    if (!is_array($log)) { $log = []; }
-                    $lines = array_reverse(array_slice($log, -100)); // latest first
+                    if (!is_array($log) || empty($log)) { 
+                        echo '<div style="color:#a10b0b;padding:10px;text-align:center;border:1px dashed #e3e5e8;">
+                            <strong>Keine Log-Einträge gefunden.</strong><br>
+                            Prüfe, ob das Debug-Log aktiviert ist (Checkbox oben in den Einstellungen).<br>
+                            Nach Aktivierung kann es etwas dauern, bis die ersten Einträge erscheinen.
+                        </div>';
+                        $log = [];
+                    }
+                    
+                    $lines = array_reverse(array_slice($log, -200)); // latest first
                     foreach ($lines as $entry) {
                         // Expect format: [YYYY-MM-DD HH:MM:SS] message
                         $ts = '';
@@ -522,10 +837,22 @@ function nowscrobbling_settings_page()
                         }
                         $status = 'Okay';
                         $color = '#0a7f3f';
-                        if (stripos($msg, 'error') !== false || stripos($msg, 'fehl') !== false || stripos($msg, 'failed') !== false) { $status = 'Fehler'; $color = '#a10b0b'; }
-                        elseif (stripos($msg, 'warn') !== false || stripos($msg, 'cooldown') !== false) { $status = 'Warnung'; $color = '#9a6a00'; }
+                        // Spezielles Styling für System-Nachrichten
+                        if (strpos($msg, 'SYSTEM:') === 0) { 
+                            $status = 'System'; 
+                            $color = '#1a56db'; 
+                        }
+                        // Fehler und Warnungen erkennen
+                        elseif (stripos($msg, 'error') !== false || stripos($msg, 'fehl') !== false || stripos($msg, 'failed') !== false) { 
+                            $status = 'Fehler'; 
+                            $color = '#a10b0b'; 
+                        }
+                        elseif (stripos($msg, 'warn') !== false || stripos($msg, 'cooldown') !== false) { 
+                            $status = 'Warnung'; 
+                            $color = '#9a6a00'; 
+                        }
                         $line = trim(($ts ? '[' . $ts . '] ' : '') . $status . ': ' . $msg);
-                        echo '<div style="margin:2px 0;">';
+                        echo '<div class="ns-log-line" data-text="' . esc_attr( strtolower($line) ) . '" style="margin:2px 0;">';
                         echo '<span style="font-family:monospace;white-space:pre-wrap;color:' . esc_attr($color) . ';">' . esc_html($line) . '</span>';
                         echo '</div>';
                     }
@@ -534,6 +861,16 @@ function nowscrobbling_settings_page()
                 <form method="post" style="margin: 10px 0;">
                     <?php wp_nonce_field('nowscrobbling_clear_log', 'nowscrobbling_log_nonce'); ?>
                     <input type="submit" name="clear_log" value="Log leeren" class="button">
+                    <!-- Test-Button zum Debug-Log schreiben -->
+                    <!-- Immer Test-Button anzeigen -->
+                    <button type="button" class="button" style="margin-left:10px;" onclick="
+                        fetch(ajaxurl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: 'action=nowscrobbling_test_log&_wpnonce=<?php echo wp_create_nonce('nowscrobbling_admin_nonce'); ?>'
+                        }).then(() => window.location.reload());">
+                        Test-Log-Eintrag erstellen
+                    </button>
                 </form>
             </details>
         </div>
@@ -596,6 +933,10 @@ function nowscrobbling_settings_page()
                             ],
                         ];
                     function ns_render_shortcode_row($code, $label, $service, $alts = []){
+                            // For admin preview, force a fresh fetch for highly dynamic services
+                            if ($service === 'lastfm' && !defined('NOWSCROBBLING_FORCE_REFRESH')) {
+                                define('NOWSCROBBLING_FORCE_REFRESH', true);
+                            }
                             $html = do_shortcode($code);
                             $src = isset($GLOBALS['nowscrobbling_last_source']) ? $GLOBALS['nowscrobbling_last_source'] : 'unbekannt';
                             $key = isset($GLOBALS['nowscrobbling_last_source_key']) ? $GLOBALS['nowscrobbling_last_source_key'] : '';
@@ -709,7 +1050,82 @@ function nowscrobbling_settings_page()
                     </tbody>
                 </table>
             </div>
+            <script>
+            // Ensure the admin preview table refreshes via AJAX once after render
+            (function(){
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', triggerRefresh);
+                } else {
+                    triggerRefresh();
+                }
+                function triggerRefresh(){
+                    try {
+                        if (typeof window.nowscrobblingRefresh === 'function') {
+                            window.nowscrobblingRefresh('[data-nowscrobbling-shortcode]').catch(function(){});
+                        }
+                    } catch(e) {}
+                }
+            })();
+            </script>
         </div>
+        <script>
+        (function(){
+            // Live cron countdown
+            function updateCountdown(id){
+                var el = document.getElementById(id);
+                if(!el) return; var t = parseInt(el.getAttribute('data-ts')||'0',10);
+                if(!t) return; var now = Math.floor(Date.now()/1000); var diff = t - now;
+                if (diff < 0) { el.textContent = '· fällig'; return; }
+                function fmt(s){ var m = Math.floor(s/60), r = s%60; return (m>0? (m+'m '):'') + r + 's'; }
+                el.textContent = '· in ' + fmt(diff);
+            }
+            setInterval(function(){ updateCountdown('ns-cron-5min-next'); updateCountdown('ns-cron-1min-next'); }, 1000);
+
+            // Client-side log filter
+            var filter = document.getElementById('ns-log-filter');
+            if (filter) {
+                filter.addEventListener('input', function(){
+                    var q = (filter.value || '').toLowerCase();
+                    document.querySelectorAll('#ns-log .ns-log-line').forEach(function(row){
+                        var txt = row.getAttribute('data-text') || '';
+                        row.style.display = (!q || txt.indexOf(q) !== -1) ? '' : 'none';
+                    });
+                });
+            }
+
+            // Auto-refresh Admin-Status nach Cron-Lauf: ping alle 10s, wenn ein Cron in <15s fällig ist
+            async function refreshAdminStatus(){
+                try {
+                    const res = await fetch(ajaxurl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'action=nowscrobbling_debug_info&_wpnonce=<?php echo wp_create_nonce('nowscrobbling_admin_nonce'); ?>' });
+                    if (!res.ok) return; const json = await res.json(); if (!json || !json.success) return;
+                    const d = json.data;
+                    var five = document.getElementById('ns-cron-5min-next');
+                    var one  = document.getElementById('ns-cron-1min-next');
+                    if (five && d.next_cache) five.setAttribute('data-ts', String(d.next_cache));
+                    if (one && d.next_tick) one.setAttribute('data-ts', String(d.next_tick));
+                } catch(e) {}
+            }
+            setInterval(function(){
+                var el5 = document.getElementById('ns-cron-5min-next'); var el1 = document.getElementById('ns-cron-1min-next');
+                var need = false; [el5, el1].forEach(function(el){ if(!el) return; var t = parseInt(el.getAttribute('data-ts')||'0',10); var diff = t - Math.floor(Date.now()/1000); if (diff <= 15) need = true; });
+                if (need) refreshAdminStatus();
+            }, 10000);
+            // Copy Debug Log
+            var copyBtn = document.getElementById('ns-log-copy');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function(){
+                    try {
+                        var lines = Array.from(document.querySelectorAll('#ns-log .ns-log-line span')).map(function(el){ return el.textContent; });
+                        var text = lines.join('\n');
+                        if (!text) { return; }
+                        navigator.clipboard.writeText(text);
+                        copyBtn.textContent = 'Kopiert!';
+                        setTimeout(function(){ copyBtn.textContent = 'Log kopieren'; }, 1200);
+                    } catch(e){}
+                });
+            }
+        })();
+        </script>
     </div>
     <?php
 }

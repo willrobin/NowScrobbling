@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.1.2] - 2025-08-10
+
+### Changes
+- **core**: Version auf 1.3.1.2 angehoben (Header, Konstante, Doku)
+- **docs**: README auf 1.3.1.2 aktualisiert, Abschnitt ergänzt
+
+### Fixes
+- Kleinere Robustheitsanpassungen in Admin-/AJAX-Darstellung dokumentiert
+
 ## [1.3.1.1] - 2025-08-09
 
 ### Fixes

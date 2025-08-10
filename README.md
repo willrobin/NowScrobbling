@@ -1,13 +1,23 @@
 # NowScrobbling WordPress Plugin
 
-**Version 1.3.1.1** - Stabile, performante und saubere Version für Last.fm und Trakt.tv Integration
+**Version 1.3.1.2** - Stabile, performante und saubere Version für Last.fm und Trakt.tv Integration
 
 ## 🎯 Übersicht
 
 NowScrobbling ist ein WordPress-Plugin, das Last.fm und Trakt.tv Daten per Shortcode darstellt. Die Version 1.3.0 bringt erhebliche Performance-Verbesserungen, bessere Caching-Strategien und eine moderne Benutzeroberfläche.
 
-## ✨ Neue Features in Version 1.3.1.1
+## ✨ Neue Features in Version 1.3.1.2
+ 
+### 🔧 Verbesserungen
+- Kleinere Stabilitätsverbesserungen und Robustheit in Admin-Ansicht und AJAX-Aktualisierung
+- Versionierung und Metadaten aktualisiert
 
+### 🧹 Wartung
+- Interne Konsistenz der Optionen und Fallback-Logik weiter vereinheitlicht
+
+—
+
+## ✨ Neue Features in Version 1.3.1.1
 ### 🚀 Performance & UX
 - **Server-Side Rendering (SSR)**: Inhalte werden sofort beim Laden aus dem Cache angezeigt
 - **Intelligentes AJAX-Update**: Nur bei Änderungen im Inhalt wird der DOM ersetzt (Hash-Vergleich)

@@ -3,7 +3,7 @@
  * Plugin Name:         NowScrobbling
  * Plugin URI:          https://github.com/willrobin/NowScrobbling
  * Description:         NowScrobbling is a WordPress plugin designed to manage API settings and display recent activities for last.fm and trakt.tv on your site. It enables users to show their latest scrobbles through shortcodes.
- * Version:             1.3.1.1
+ * Version:             1.3.1.2
  * File: nowscrobbling/nowscrobbling.php
  * Requires at least:   5.0
  * Requires PHP:        7.0
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // -----------------------------------------------------------------------------
 if ( ! defined( 'NOWSCROBBLING_VERSION' ) ) {
-    define( 'NOWSCROBBLING_VERSION', '1.3.1.1' );
+    define( 'NOWSCROBBLING_VERSION', '1.3.1.2' );
 }
 if ( ! defined( 'NOWSCROBBLING_FILE' ) ) {
 	define( 'NOWSCROBBLING_FILE', __FILE__ );
@@ -92,56 +92,80 @@ function nowscrobbling_should_load_assets() : bool {
     return nowscrobbling_page_has_shortcodes();
 }
 
+/**
+ * Lädt die Plugin-Stylesheets nur, wenn tatsächlich ein Shortcode auf der Seite ist.
+ * Verwendet Dateizeitstempel als Version, um optimales Browser-Caching zu ermöglichen.
+ */
 function nowscrobbling_enqueue_styles() : void {
+	// Lade Styles nur, wenn mindestens ein Shortcode vorhanden ist
 	if ( ! nowscrobbling_should_load_assets() ) {
 		return;
 	}
 	
+	// CSS-Pfade
 	$css_rel_path = 'public/css/nowscrobbling-public.css';
 	$css_path     = NOWSCROBBLING_PATH . $css_rel_path;
-	$version      = file_exists( $css_path ) ? (string) filemtime( $css_path ) : NOWSCROBBLING_VERSION;
+	
+	// Nutze Dateizeitstempel als Version für Browser-Cache-Kontrolle
+	// Falls Datei nicht existiert, verwende Plugin-Version als Fallback
+	$version = file_exists( $css_path ) ? (string) filemtime( $css_path ) : NOWSCROBBLING_VERSION;
 
+	// Registriere und lade die Stylesheets
 	wp_enqueue_style(
 		'nowscrobbling-public',
 		NOWSCROBBLING_URL . $css_rel_path,
-		[],
-		$version
+		[], // Keine Abhängigkeiten
+		$version,
+		'all' // Medien-Query
 	);
 }
 add_action( 'wp_enqueue_scripts', 'nowscrobbling_enqueue_styles' );
 
+/**
+ * Lädt die JavaScript-Dateien für die AJAX-Funktionalität.
+ * Diese werden nur geladen, wenn mindestens ein Shortcode auf der Seite vorhanden ist.
+ */
 function nowscrobbling_enqueue_scripts() : void {
-    // Always enqueue when relevant shortcodes are present on the page
+    // Belade Scripte nur, wenn mindestens ein Shortcode vorhanden ist
     if ( ! nowscrobbling_should_load_assets() ) {
         return;
     }
 	
+	// JavaScript-Pfad und Version basierend auf Dateizeitstempel
 	$js_rel_path = 'public/js/ajax-load.js';
 	$js_path     = NOWSCROBBLING_PATH . $js_rel_path;
 	$version     = file_exists( $js_path ) ? (string) filemtime( $js_path ) : NOWSCROBBLING_VERSION;
 
+	// Registriere und lade das JavaScript
 	wp_enqueue_script(
 		'nowscrobbling-ajax',
 		NOWSCROBBLING_URL . $js_rel_path,
-		[ 'jquery' ],
+		[ 'jquery' ],  // Abhängigkeit von jQuery
 		$version,
-		true
+		true           // Im Footer laden für bessere Performance
 	);
 
-    // Enhanced localization with admin-configurable polling intervals
+    // Hole konfigurierbare Polling-Intervalle aus den Optionen
     $nowplaying_interval_s = (int) get_option( 'ns_nowplaying_interval', 20 );
     $max_interval_s        = (int) get_option( 'ns_max_interval', 300 );
     $backoff_multiplier    = (float) get_option( 'ns_backoff_multiplier', 2 );
 
+    // Sichere Werte-Validierung mit Mindestgrenzen
+    $nowplaying_interval = max( 5, $nowplaying_interval_s ) * 1000; // Mindestens 5 Sekunden
+    $max_interval        = max( 30, $max_interval_s ) * 1000;       // Mindestens 30 Sekunden
+    $backoff_mult        = max( 1, $backoff_multiplier );           // Mindestens 1.0
+
+    // Lokalisiere das Script mit dynamischen Werten und Konfiguration
     wp_localize_script( 'nowscrobbling-ajax', 'nowscrobbling_ajax', [
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'nowscrobbling_nonce' ),
         'polling'  => [
-            'nowplaying_interval' => max( 5, $nowplaying_interval_s ) * 1000,
-            'max_interval'        => max( 30, $max_interval_s ) * 1000,
-            'backoff_multiplier'  => max( 1, $backoff_multiplier ),
+            'nowplaying_interval' => $nowplaying_interval,
+            'max_interval'        => $max_interval,
+            'backoff_multiplier'  => $backoff_mult,
         ],
         'debug'    => (bool) get_option( 'nowscrobbling_debug_log', false ),
+        'version'  => NOWSCROBBLING_VERSION,
     ] );
 }
 add_action( 'wp_enqueue_scripts', 'nowscrobbling_enqueue_scripts' );
@@ -155,6 +179,10 @@ function nowscrobbling_schedule_cron() {
 	if ( ! wp_next_scheduled( 'nowscrobbling_cache_refresh' ) ) {
 		wp_schedule_event( time(), 'every_5_minutes', 'nowscrobbling_cache_refresh' );
 	}
+    // Ensure 1-minute tick exists for now-playing refreshes (sitewide, unabhängig von Besuchern)
+    if ( ! wp_next_scheduled( 'nowscrobbling_nowplaying_tick' ) ) {
+        wp_schedule_event( time(), 'every_1_minute', 'nowscrobbling_nowplaying_tick' );
+    }
 }
 add_action( 'wp', 'nowscrobbling_schedule_cron' );
 
@@ -165,6 +193,22 @@ function nowscrobbling_cache_refresh_cron() {
 	}
 }
 add_action( 'nowscrobbling_cache_refresh', 'nowscrobbling_cache_refresh_cron' );
+
+/**
+ * Minütlicher Tick: Aktualisiert die Now-Playing-bezogenen Caches, wenn aktiv
+ */
+add_action( 'nowscrobbling_nowplaying_tick', function(){
+    // Last.fm: Wenn Now-Playing aktiv markiert, scrobbles-Cache frisch halten
+    if ( (int) get_option( 'ns_flag_lastfm_nowplaying', 0 ) === 1 ) {
+        try { nowscrobbling_fetch_lastfm_scrobbles('cron'); } catch ( \Throwable $e ) {}
+    }
+    // Trakt: Wenn Watching aktiv markiert, watching + activities aktualisieren
+    if ( (int) get_option( 'ns_flag_trakt_watching', 0 ) === 1 ) {
+        try { nowscrobbling_fetch_trakt_watching(); } catch ( \Throwable $e ) {}
+        try { nowscrobbling_fetch_trakt_activities('trakt_indicator'); } catch ( \Throwable $e ) {}
+    }
+    // Wenn beide inaktiv sind, alle 5 Minuten ohnehin per cache_refresh; hier kein zusätzlicher Abruf nötig
+} );
 
 // Add custom cron interval
 function nowscrobbling_cron_intervals( $schedules ) {
@@ -213,7 +257,7 @@ function nowscrobbling_activate() {
 		'last_episodes_count'      => 3,
 		'lastfm_activity_limit'    => 5,
 		'trakt_activity_limit'     => 5,
-		'nowscrobbling_debug_log'  => 0,
+		'nowscrobbling_debug_log'  => 1, // Standard: aktiviert für Fehlersuche
         'ns_nowplaying_interval'   => 20,
         'ns_max_interval'          => 300,
         'ns_backoff_multiplier'    => 2,

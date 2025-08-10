@@ -34,12 +34,40 @@ function nowscrobbling_generate_shortcode_output($items, $format_callback) {
     if (!is_array($items) || empty($items)) {
         return '';
     }
-    $formatted_items = array_map($format_callback, $items);
+    
+    // Validiere, dass alle Elemente korrekt formatiert werden können
+    $formatted_items = [];
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            // Überspringe nicht-Array-Elemente, aber logge sie für Debugging
+            if (function_exists('nowscrobbling_log')) {
+                nowscrobbling_log("Ungültiges Element im Shortcode-Output: " . print_r($item, true));
+            }
+            continue;
+        }
+        
+        try {
+            $formatted = $format_callback($item);
+            if ($formatted) {
+                $formatted_items[] = $formatted;
+            }
+        } catch (Exception $e) {
+            if (function_exists('nowscrobbling_log')) {
+                nowscrobbling_log("Fehler beim Formatieren eines Elements: " . $e->getMessage());
+            }
+        }
+    }
+    
+    if (empty($formatted_items)) {
+        return '';
+    }
+    
     if (count($formatted_items) > 1) {
         $last_item = array_pop($formatted_items);
         return implode(' ', $formatted_items) . ' und ' . $last_item;
     }
-    return $formatted_items[0] ?? '';
+    
+    return $formatted_items[0];
 }
 
 // -----------------------------------------------------------------------------
@@ -48,38 +76,94 @@ function nowscrobbling_generate_shortcode_output($items, $format_callback) {
 
 // Last.fm Indicator Shortcode
 function nowscr_lastfm_indicator_shortcode() {
-    // Use correct method name and existing fetchers; cache very shortly for SSR
-    // Prefer existing cache/fallback data; keep TTL short for SSR, but never empty
-    $now = nowscrobbling_get_or_set_transient('my_lastfm_now_playing', function () {
-        return nowscrobbling_fetch_lastfm_data('getrecenttracks', ['limit' => 1]);
-    }, max( 30, (int) get_option('lastfm_cache_duration', 1) * MINUTE_IN_SECONDS ) );
+    // Einheitlich dieselbe Datenquelle wie die History verwenden
+    $scrobbles = nowscrobbling_fetch_lastfm_scrobbles('lastfm_indicator');
 
-    if (!$now || empty($now['recenttracks']['track'])) {
+    // Normalisieren: ggf. Wrapper entfernen und Fehlerfälle früh erkennen
+    if (is_array($scrobbles) && isset($scrobbles['value']) && is_array($scrobbles['value'])) {
+        $scrobbles = $scrobbles['value'];
+    }
+    if (!is_array($scrobbles) || isset($scrobbles['error']) || empty($scrobbles)) {
         $html = '<em>Keine kürzlichen Tracks gefunden.</em>';
         $hash = nowscrobbling_make_hash($html);
         return nowscrobbling_wrap_output('nowscr_lastfm_indicator', $html, $hash, false, [], 'span');
     }
 
-    $currentTrack = $now['recenttracks']['track'][0];
-    $nowPlaying = isset($currentTrack['@attr']['nowplaying']) && $currentTrack['@attr']['nowplaying'] === 'true';
+    // Prüfe, ob Now-Playing aktiv ist (erster Eintrag mit nowplaying=true)
+    $isNow = false;
+    $lastDate = '';
+    $nowPlayingTrack = null;
+    
+    // Suche nach einem Now-Playing Track
+    foreach ($scrobbles as $track) {
+        if (isset($track['nowplaying']) && $track['nowplaying']) {
+            $isNow = true;
+            $nowPlayingTrack = $track;
+            break;
+        }
+    }
+    
+    // lastDate wird weiter unten anhand des Kandidaten gesetzt
 
-    if ($nowPlaying) {
-        // Indicator: concise text only; GIFs sind History-Shortcodes vorbehalten
-        $html = '<strong>Scrobbelt gerade</strong>';
+    if ($isNow) {
+        // Prüfe, ob wir Detaildaten zum Now-Playing Track haben
+        if ($nowPlayingTrack && isset($nowPlayingTrack['artist']) && isset($nowPlayingTrack['name'])) {
+            nowscrobbling_log("Now-Playing Track gefunden: " . $nowPlayingTrack['artist'] . " - " . $nowPlayingTrack['name']);
+            $html = '<strong>Scrobbelt gerade</strong>';
+        } else {
+            nowscrobbling_log("Now-Playing Status aktiv, aber keine Detaildaten gefunden");
+            $html = '<strong>Scrobbelt gerade</strong>';
+        }
         $hash = nowscrobbling_make_hash([ 'state' => 'nowplaying' ]);
-    return nowscrobbling_wrap_output('nowscr_lastfm_indicator', $html, $hash, true, [], 'span');
-    } else {
-        $lastPlayed = $currentTrack['date']['#text'] ?? '';
-        if ($lastPlayed) {
-            $ts = strtotime($lastPlayed);
-            $dt = date_i18n( get_option('date_format') . ' ' . get_option('time_format'), $ts );
+        return nowscrobbling_wrap_output('nowscr_lastfm_indicator', $html, $hash, true, [], 'span');
+    }
+
+    // Fallback: Zeige "Zuletzt gehört: …" anhand der History
+    // Finde den ersten Eintrag mit Datum (bevorzugt UTS)
+    $candidate = null;
+    foreach ($scrobbles as $row) {
+        if (isset($row['uts']) && (int)$row['uts'] > 0) { $candidate = $row; break; }
+        if (!empty($row['date'])) { $candidate = $row; break; }
+    }
+    
+    // Prüfe, ob der Kandidat gültige Daten hat (nicht die Fallback-Werte)
+    if ($candidate && isset($candidate['artist']) && isset($candidate['name']) && 
+        $candidate['artist'] !== 'Unbekannter Künstler' && $candidate['name'] !== 'Unbekannter Track') {
+        $uts = $candidate && isset($candidate['uts']) ? (int)$candidate['uts'] : 0;
+        $dateText = $candidate && isset($candidate['date']) ? (string)$candidate['date'] : '';
+        // Compute timestamp in UTC; Last.fm UTS is UTC. If only date text is present, parse as UTC to avoid server TZ drift.
+        if ($uts > 0) {
+            $ts = $uts;
+        } else if ($dateText !== '') {
+            try {
+                $dtUtc = new DateTime($dateText, new DateTimeZone('UTC'));
+                $ts = $dtUtc->getTimestamp();
+            } catch (Exception $e) {
+                $ts = 0;
+            }
+        } else {
+            $ts = 0;
+        }
+        if ($ts > 0) {
+            $format = get_option('date_format') . ' ' . get_option('time_format');
+            // Prefer wp_date to respect WP timezone explicitly; fallback to date_i18n for older WP
+            if (function_exists('wp_date') && function_exists('wp_timezone')) {
+                $dt = wp_date($format, $ts, wp_timezone());
+            } else {
+                $dt = date_i18n($format, $ts);
+            }
             $html = 'Zuletzt gehört: ' . esc_html($dt);
+            $lastDate = $dt;
         } else {
             $html = 'Zuletzt gehört: Unbekannt';
         }
-        $hash = nowscrobbling_make_hash([ 'state' => 'lastplayed', 'time' => $lastPlayed ]);
-        return nowscrobbling_wrap_output('nowscr_lastfm_indicator', $html, $hash, false, [], 'span');
+    } else {
+        // Wenn keine gültigen Daten vorhanden sind, zeige eine bessere Meldung
+        $html = '<em>Keine kürzlichen Tracks gefunden.</em>';
     }
+    
+    $hash = nowscrobbling_make_hash([ 'state' => 'lastplayed', 'time' => $lastDate ]);
+    return nowscrobbling_wrap_output('nowscr_lastfm_indicator', $html, $hash, false, [], 'span');
 }
 add_shortcode('nowscr_lastfm_indicator', 'nowscr_lastfm_indicator_shortcode');
 
@@ -91,8 +175,12 @@ function nowscr_lastfm_history_shortcode($atts) {
     ], $atts);
 
     $scrobbles = nowscrobbling_fetch_lastfm_scrobbles('lastfm_history');
-    if (isset($scrobbles['error'])) {
-        $html = "<em>" . esc_html($scrobbles['error']) . "</em>";
+    // Normalisieren: ggf. Wrapper entfernen und Fehlerfälle früh erkennen
+    if (is_array($scrobbles) && isset($scrobbles['value']) && is_array($scrobbles['value'])) {
+        $scrobbles = $scrobbles['value'];
+    }
+    if (!is_array($scrobbles) || isset($scrobbles['error']) || empty($scrobbles)) {
+        $html = '<em>Keine kürzlichen Tracks gefunden.</em>';
         $hash = nowscrobbling_make_hash($html);
         return nowscrobbling_wrap_output('nowscr_lastfm_history', $html, $hash, false, [], 'span');
     }
@@ -100,7 +188,7 @@ function nowscr_lastfm_history_shortcode($atts) {
     $output = '';
     $isNowPlaying = false;
     foreach ($scrobbles as $track) {
-        if ($track['nowplaying']) {
+        if (isset($track['nowplaying']) && $track['nowplaying']) {
             $nowPlaying = '<img src="' . esc_url( ( defined('NOWSCROBBLING_URL') ? NOWSCROBBLING_URL : plugins_url('/', dirname(__DIR__)) ) . 'public/images/nowplaying.gif' ) . '" alt="NOW PLAYING" loading="lazy" decoding="async" /> ';
             $url = esc_url($track['url']);
             $artist = esc_html($track['artist']);
@@ -120,19 +208,54 @@ function nowscr_lastfm_history_shortcode($atts) {
     }
 
     if (empty($output) && !empty($scrobbles)) {
-        $lastTrack = $scrobbles[0];
-        $url = esc_url($lastTrack['url']);
-        $artist = esc_html($lastTrack['artist']);
-        $name = esc_html($lastTrack['name']);
-        $title_attr = esc_attr("{$name} von {$artist} auf last.fm");
+        // Suche nach dem ersten Track mit gültigen Daten (nicht die Fallback-Werte)
+        $lastTrack = null;
+        foreach ($scrobbles as $track) {
+            // Prüfe, ob der Track gültige Daten hat
+            $hasValidArtist = isset($track['artist']) && $track['artist'] !== '' && $track['artist'] !== 'Unbekannter Künstler';
+            $hasValidName = isset($track['name']) && $track['name'] !== '' && $track['name'] !== 'Unbekannter Track';
+            
+            if ($hasValidArtist && $hasValidName) {
+                $lastTrack = $track;
+                break;
+            }
+        }
+        
+        // Fallback: Wenn kein gültiger Track gefunden wurde, nimm den ersten
+        if (!$lastTrack && isset($scrobbles[0])) {
+            $lastTrack = $scrobbles[0];
+        }
+        
+        if ($lastTrack) {
+            $url = esc_url(isset($lastTrack['url']) ? $lastTrack['url'] : '#');
+            // Prüfe, ob der Track gültige Daten hat
+            $rawArtist = isset($lastTrack['artist']) && $lastTrack['artist'] !== '' && $lastTrack['artist'] !== 'Unbekannter Künstler' ? $lastTrack['artist'] : null;
+            $rawName = isset($lastTrack['name']) && $lastTrack['name'] !== '' && $lastTrack['name'] !== 'Unbekannter Track' ? $lastTrack['name'] : null;
+            
+            // Nur ausgeben, wenn sowohl Künstler als auch Track gültig sind
+            if ($rawArtist && $rawName) {
+                nowscrobbling_log("Letzter Track gefunden: " . $rawArtist . " - " . $rawName);
+                $artist = esc_html($rawArtist);
+                $name = esc_html($rawName);
+                $title_attr = esc_attr("{$name} von {$artist} auf last.fm");
 
-        // Text kürzen basierend auf 'max_length' (multibyte-safe)
-        $fullText = "{$artist} - {$name}";
-        $shortText = nowscrobbling_mb_truncate($fullText, (int) $atts['max_length']);
-        $isTruncated = ($shortText !== $fullText);
+                // Text kürzen basierend auf 'max_length' (multibyte-safe)
+                $fullText = "{$artist} - {$name}";
+                $shortText = nowscrobbling_mb_truncate($fullText, (int) $atts['max_length']);
+                $isTruncated = ($shortText !== $fullText);
 
-        $class = $isTruncated ? 'bubble truncated' : 'bubble';
-        $output = "<a class='{$class}' href='{$url}' title='{$title_attr}' target='_blank'>{$shortText}</a>";
+                $class = $isTruncated ? 'bubble truncated' : 'bubble';
+                $output = "<a class='{$class}' href='{$url}' title='{$title_attr}' target='_blank'>{$shortText}</a>";
+            } else {
+                // Wenn keine gültigen Daten vorhanden sind, zeige eine bessere Meldung
+                nowscrobbling_log("Letzter Track hat keine gültigen Daten");
+                $output = '<em>Keine kürzlichen Tracks gefunden.</em>';
+            }
+        } else {
+            // Wenn kein Track gefunden wurde
+            nowscrobbling_log("Keine Tracks in den Scrobbles gefunden");
+            $output = '<em>Keine kürzlichen Tracks gefunden.</em>';
+        }
     }
 
     $hash = nowscrobbling_make_hash([ 'tracks' => array_slice($scrobbles, 0, 3) ]);
@@ -465,14 +588,42 @@ function nowscr_trakt_history_shortcode($atts) {
     $activities = nowscrobbling_fetch_trakt_activities('trakt_history');
     // Normalize activities list: must be a list of arrays with expected structure
     $valid_list = [];
+    
+    // Debug-Log für die Aktivitäten
+    if (function_exists('nowscrobbling_log')) {
+        nowscrobbling_log("[shortcode: trakt_history] Aktivitäten: " . (is_array($activities) ? count($activities) : 'keine') . " Einträge");
+        if (!is_array($activities) || isset($activities['error'])) {
+            nowscrobbling_log("[shortcode: trakt_history] Fehler oder keine Daten: " . (isset($activities['error']) ? $activities['error'] : 'Keine Daten'));
+        }
+    }
+    
     if (is_array($activities)) {
         if (isset($activities['error'])) {
             $valid_list = [];
         } else {
             foreach ($activities as $row) {
-                if (!is_array($row) || !isset($row['type'])) { continue; }
+                if (!is_array($row)) { 
+                    if (function_exists('nowscrobbling_log')) {
+                        nowscrobbling_log("[shortcode: trakt_history] Ungültiger Eintrag (kein Array): " . print_r($row, true));
+                    }
+                    continue; 
+                }
+                
+                if (!isset($row['type'])) {
+                    if (function_exists('nowscrobbling_log')) {
+                        nowscrobbling_log("[shortcode: trakt_history] Eintrag ohne Typ: " . print_r($row, true));
+                    }
+                    continue;
+                }
+                
                 $t = $row['type'];
-                if (!isset($row[$t]['ids']['trakt'])) { continue; }
+                if (!isset($row[$t]['ids']['trakt'])) {
+                    if (function_exists('nowscrobbling_log')) {
+                        nowscrobbling_log("[shortcode: trakt_history] Eintrag ohne Trakt-ID: " . print_r($row, true));
+                    }
+                    continue;
+                }
+                
                 $valid_list[] = $row;
             }
         }
@@ -605,23 +756,25 @@ function nowscr_trakt_last_movie_shortcode($atts) {
     $output = '';
     if (is_array($movies) && count($movies) > 0) {
         $output = nowscrobbling_generate_shortcode_output(array_slice($movies, 0, $limit), function ($movie) use ($ratings_map, $rewatch_counts, &$history_positions, $atts, $compute_rewatch) {
-            $id = $movie['movie']['ids']['trakt'];
+            $id = isset($movie['movie']['ids']['trakt']) ? (int)$movie['movie']['ids']['trakt'] : 0;
             $rating_val = '';
             if (filter_var($atts['show_rating'], FILTER_VALIDATE_BOOLEAN)) {
-                $rating_val = isset($ratings_map[(int)$id]) ? (string) $ratings_map[(int)$id] : '';
+                if ($id > 0 && isset($ratings_map[$id])) {
+                    $rating_val = (string) $ratings_map[$id];
+                }
             }
             $rewatch_text = '';
-            if ($compute_rewatch) {
+            if ($compute_rewatch && $id > 0) {
                 if (!isset($history_positions[$id])) { $history_positions[$id] = 0; }
-                $total = isset($rewatch_counts[(int)$id]) ? (int)$rewatch_counts[(int)$id] : 0;
+                $total = isset($rewatch_counts[$id]) ? (int)$rewatch_counts[$id] : 0;
                 $rewatch = $total - $history_positions[$id];
                 $rewatch_text = $rewatch > 1 ? (string)$rewatch : '';
                 $history_positions[$id]++;
             }
 
-            $title = $movie['movie']['title'];
-            $year  = filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN) ? (string)$movie['movie']['year'] : '';
-            $url   = "https://trakt.tv/movies/{$movie['movie']['ids']['slug']}";
+            $title = isset($movie['movie']['title']) ? $movie['movie']['title'] : 'Unbekannter Film';
+            $year  = (filter_var($atts['show_year'], FILTER_VALIDATE_BOOLEAN) && isset($movie['movie']['year'])) ? (string)$movie['movie']['year'] : '';
+            $url   = isset($movie['movie']['ids']['slug']) ? "https://trakt.tv/movies/{$movie['movie']['ids']['slug']}" : '#';
 
             return nowscrobbling_format_output($title, $year, $url, $rating_val, $rewatch_text);
         });
