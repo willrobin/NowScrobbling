@@ -482,7 +482,11 @@ function nowscr_trakt_indicator_shortcode() {
 
     $activities = nowscrobbling_fetch_trakt_activities('trakt_indicator');
     $valid = null;
+    // Normalize activities to an array of rows if wrapped or malformed
     if (is_array($activities)) {
+        if (isset($activities['value']) && is_array($activities['value'])) {
+            $activities = $activities['value'];
+        }
         foreach ($activities as $row) {
             if (!is_array($row)) { continue; }
             if (!isset($row['watched_at'])) { continue; }
@@ -586,7 +590,15 @@ function nowscr_trakt_history_shortcode($atts) {
     }
     
     $activities = nowscrobbling_fetch_trakt_activities('trakt_history');
-    // Normalize activities list: must be a list of arrays with expected structure
+    // Normalize activities list: unwrap potential wrapper
+    if (is_array($activities) && isset($activities['value']) && is_array($activities['value'])) {
+        $activities = $activities['value'];
+    }
+    // Filter out any non-array entries (guards against stray numeric entries like 1)
+    if (is_array($activities)) {
+        $activities = array_values(array_filter($activities, 'is_array'));
+    }
+    // Must be a list of arrays with expected structure
     $valid_list = [];
     
     // Debug-Log für die Aktivitäten
@@ -634,6 +646,73 @@ function nowscr_trakt_history_shortcode($atts) {
         if (is_string($prev) && $prev !== '') {
             $hash = nowscrobbling_make_hash($prev);
             return nowscrobbling_wrap_output('nowscr_trakt_history', $prev, $hash, false, $atts, 'span');
+        }
+        // As an additional guard: try activities fallback transient directly
+        if (function_exists('nowscrobbling_build_cache_key')) {
+            $act_key = nowscrobbling_build_cache_key('trakt_activities', [ 'limit' => (int) nowscrobbling_opt('trakt_activity_limit', 25) ]);
+            $fb = get_transient($act_key . '_fallback');
+            // Decompress if needed
+            if (is_array($fb) && isset($fb['__ns_compressed']) && $fb['__ns_compressed'] === true && isset($fb['data'])) {
+                if (function_exists('gzuncompress')) {
+                    $decoded = @unserialize(gzuncompress(base64_decode($fb['data'])));
+                    if ($decoded !== false) { $fb = $decoded; }
+                }
+            }
+            if (is_array($fb)) {
+                $recover = [];
+                foreach ($fb as $row) {
+                    if (!is_array($row)) { continue; }
+                    if (!isset($row['type'])) { continue; }
+                    $t = $row['type'];
+                    if (!isset($row[$t]['ids']['trakt'])) { continue; }
+                    $recover[] = $row;
+                }
+                if (!empty($recover)) {
+                    $slice = array_slice($recover, 0, $limit);
+                    $output = nowscrobbling_generate_shortcode_output($slice, function($activity) use ($atts) {
+                        $type = isset($activity['type']) ? $activity['type'] : '';
+                        $id = ($type && isset($activity[$type]['ids']['trakt'])) ? $activity[$type]['ids']['trakt'] : null;
+                        $rating_val = '';
+                        if ($atts['show_rating']) {
+                            $mapType = ($type === 'movie') ? 'movies' : (($type === 'episode') ? 'episodes' : 'shows');
+                            $fetched = nowscrobbling_get_trakt_rating_from_map($mapType, $id);
+                            if ($fetched !== null && $fetched !== '') { $rating_val = (string) $fetched; }
+                        }
+                        $title = '';
+                        $year = '';
+                        $link = '';
+                        if ($type === 'movie' && isset($activity['movie'])) {
+                            $title = $activity['movie']['title'] ?? '';
+                            $year  = ($atts['show_year'] && isset($activity['movie']['year'])) ? (string) $activity['movie']['year'] : '';
+                            $link  = isset($activity['movie']['ids']['slug']) ? ('https://trakt.tv/movies/' . $activity['movie']['ids']['slug']) : '';
+                        } elseif ($type === 'episode' && isset($activity['episode'], $activity['show'])) {
+                            $s = $activity['episode']['season'] ?? '';
+                            $e = $activity['episode']['number'] ?? '';
+                            $t = $activity['episode']['title'] ?? '';
+                            $showTitle = $activity['show']['title'] ?? '';
+                            $title = trim($showTitle . ' - ' . 'S' . $s . 'E' . $e . ': ' . $t);
+                            if (isset($activity['show']['ids']['slug'])) {
+                                $link = 'https://trakt.tv/shows/' . $activity['show']['ids']['slug'] . '/seasons/' . $s . '/episodes/' . $e;
+                            }
+                        } elseif ($type === 'show' && isset($activity['show'])) {
+                            $title = $activity['show']['title'] ?? '';
+                            $link  = isset($activity['show']['ids']['slug']) ? ('https://trakt.tv/shows/' . $activity['show']['ids']['slug']) : '';
+                        }
+                        $rewatch_text = '';
+                        if ($atts['show_rewatch']) {
+                            $rewatchType = ($type === 'movie') ? 'movies' : (($type === 'episode') ? 'episodes' : 'shows');
+                            $count = nowscrobbling_get_rewatch_count($id, $rewatchType);
+                            $rewatch_text = $count > 1 ? (string) $count : '';
+                        }
+                        return nowscrobbling_format_output($title, $year, $link, $rating_val, $rewatch_text, false, '', isset($atts['max_length']) ? (int) $atts['max_length'] : 0);
+                    });
+                    if (!empty($output)) {
+                        set_transient($html_key, $output, 12 * HOUR_IN_SECONDS);
+                        $hash = nowscrobbling_make_hash([ 'count' => count($slice), 'first' => $slice[0]['watched_at'] ?? '' ]);
+                        return nowscrobbling_wrap_output('nowscr_trakt_history', $output, $hash, false, $atts, 'span');
+                    }
+                }
+            }
         }
         $html = '<em>Keine kürzlichen Aktivitäten gefunden</em>';
         $hash = nowscrobbling_make_hash($html);

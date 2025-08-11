@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Handle dynamic content (for themes that load content via AJAX)
    */
-  const observer = new MutationObserver((mutations) => {
+  const processMutations = (mutations) => {
     // Batch-Verarbeitung aller neuen Elemente über alle Mutationen
     const newElements = new Set();
     
@@ -560,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
-  });
+  };
 
   // Optimierte Beobachtung mit Throttling zur Performance-Verbesserung
   let pendingUpdate = false;
@@ -571,8 +571,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pendingUpdate) {
       pendingUpdate = true;
       requestAnimationFrame(() => {
-        observer.disconnect();
-        observer(mutations); // Direkt als Funktion aufrufen (es ist keine Klasse, sondern eine Funktion)
+        throttledObserver.disconnect();
+        processMutations(mutations);
         pendingUpdate = false;
       });
     }

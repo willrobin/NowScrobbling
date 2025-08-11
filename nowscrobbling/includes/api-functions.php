@@ -205,21 +205,15 @@ function nowscrobbling_log($message) {
 
 // Test-Log-Nachricht beim Laden der Datei (nur wenn Debug aktiviert ist)
 add_action('init', function() {
-    // Prüfe den aktuellen Status der Debug-Option
+    // Schreibe nur bei aktiviertem Debug-Log und im Admin-Kontext eine kurze Marker-Zeile
     $debug_enabled = (bool) get_option('nowscrobbling_debug_log', 0);
-    
-    // Wenn Debug aktiviert ist, log normal
-    if ($debug_enabled) {
-        nowscrobbling_log('Debug-Log Test: Plugin geladen mit aktiviertem Debug-Logging');
+    if ($debug_enabled && is_admin()) {
+        // Guard: höchstens 1× pro Minute loggen, um Spam zu vermeiden
+        if (!get_transient('nowscrobbling_debug_marker_guard')) {
+            nowscrobbling_log('Debug-Log aktiv – Plugin geladen');
+            set_transient('nowscrobbling_debug_marker_guard', 1, 60);
+        }
     }
-    
-    // Schreibe einen direkten Eintrag, um zu sehen ob die Log-Tabelle funktioniert
-    // Dies ignoriert bewusst die Debug-Einstellung
-    $log = get_option('nowscrobbling_log', []);
-    if (!is_array($log)) { $log = []; }
-    $log[] = '[' . current_time('mysql') . '] SYSTEM: Debug-Status: ' . ($debug_enabled ? 'Aktiviert' : 'Deaktiviert') . ' (direkter Eintrag)';
-    if (count($log) > 200) array_shift($log);
-    update_option('nowscrobbling_log', $log);
 });
 
 /**
@@ -364,11 +358,12 @@ function nowscrobbling_fetch_api_data($url, $headers = [], $args = [], $cache_ke
     nowscrobbling_metrics_update( $service, 'total_requests' );
     nowscrobbling_metrics_update( $service, [ 'last_ms' => (int) round( ( microtime(true) - $start ) * 1000 ), 'last_status' => (int) $response_code ] );
 
-    // Handle 304 Not Modified
+    // Handle 304 Not Modified: signal upper layers that data is unchanged
     if ($response_code === 304) {
         nowscrobbling_log("ETag cache hit for $url");
         nowscrobbling_metrics_update( $service, 'etag_hits' );
-        return null; // Return null to indicate no change
+        // Return a sentinel structure so the cache-layer can extend primary cache from fallback
+        return [ '__ns_not_modified' => true ];
     }
 
     // Treat 204 as empty success for all services
@@ -727,29 +722,7 @@ function nowscrobbling_fetch_trakt_data($path, $params = [], $cache_key = '')
  */
 function nowscrobbling_fetch_trakt_activities($context = 'default')
 {
-    // Direkter API-Aufruf für Shortcodes, um Probleme zu vermeiden
-    if ($context === 'trakt_history') {
-        nowscrobbling_log("[trakt_history] Direkter API-Aufruf für Trakt-Aktivitäten");
-        
-        $headers = [
-            'Content-Type' => 'application/json',
-            'trakt-api-version' => '2',
-            'trakt-api-key' => nowscrobbling_opt('trakt_client_id'),
-        ];
-        
-        $user = nowscrobbling_opt('trakt_user');
-        $limit = 5; // Kleineres Limit für direkten Aufruf
-        $url = NOWSCROBBLING_TRAKT_API_URL . "users/$user/history" . '?' . http_build_query(['limit' => $limit]);
-        
-        $response = nowscrobbling_fetch_api_data($url, $headers);
-        
-        if (is_array($response) && !empty($response)) {
-            nowscrobbling_log("[trakt_history] Erfolgreicher direkter API-Aufruf: " . count($response) . " Einträge");
-            return $response;
-        } else {
-            nowscrobbling_log("[trakt_history] Direkter API-Aufruf fehlgeschlagen, versuche Cache");
-        }
-    }
+    // Direkten ungecachten Abruf vermeiden: Immer Cache-Layer nutzen; optional kurze TTL via TTL-Override unten
 
     // Normaler Cache-basierter Aufruf
     $result = nowscrobbling_get_or_set_transient(
@@ -761,9 +734,10 @@ function nowscrobbling_fetch_trakt_activities($context = 'default')
             $limit = (int) nowscrobbling_opt('trakt_activity_limit', 25);
             $limit = max(5, min(50, $limit)); // Sicherstellen, dass Limit im sinnvollen Bereich ist
             
+            // Call without inner cache-key to avoid double caching; outer layer handles caching/TTL
             $data = nowscrobbling_fetch_trakt_data("users/" . $user . "/history", [
                 'limit' => $limit
-            ], 'trakt_activities');
+            ]);
             
             if ($data === null) {
                 nowscrobbling_log("Trakt API-Call lieferte keine Daten");
@@ -782,6 +756,8 @@ function nowscrobbling_fetch_trakt_activities($context = 'default')
                 nowscrobbling_log("Unerwarteter Datentyp in Trakt-Antwort: " . gettype($data));
                 return ['error' => 'Ungültiges Datenformat in Trakt-Antwort', 'timestamp' => time()];
             }
+            // Sanitize: entferne nicht-Array-Einträge (z. B. versehentliche Skalarwerte)
+            $data = array_values(array_filter($data, 'is_array'));
             
             // Prüfen auf leere Antwort
             if (empty($data)) {
@@ -1323,7 +1299,39 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
         set_transient( $lock_key, 1, 15 );
         
         // Daten abrufen über Callback
-        $data = call_user_func( $callback );
+            $data = call_user_func( $callback );
+            // If lower layer returned ETag Not Modified signal, try to refresh from fallback/primary
+            if ( is_array($data) && isset($data['__ns_not_modified']) ) {
+                // Prefer existing primary cache if still present, else fallback
+                $existing = get_transient( $transient_key );
+                if ( $existing === false && $has_fallback ) {
+                    $existing = $fallback_data;
+                }
+                if ( $existing !== false && $existing !== null ) {
+                    // Renew primary cache TTL using current $expiration
+                    try {
+                        set_transient( $transient_key, $existing, $expiration );
+                    } catch ( Exception $e ) {}
+                    $GLOBALS['nowscrobbling_last_source'] = 'cache';
+                    $GLOBALS['nowscrobbling_last_source_key'] = $transient_key;
+                    nowscrobbling_metrics_update( $service, 'cache_hits' );
+                    // Meta aktualisieren
+                    $now = (int) current_time('timestamp');
+                    $meta = nowscrobbling_cache_meta($transient_key, [
+                        'last_access' => $now,
+                        'expires_at'  => $now + (int) $expiration,
+                        'ttl'         => (int) $expiration,
+                        'service'     => $service,
+                        'fallback_key' => $fallback_key,
+                        'fallback_exists' => $has_fallback ? 1 : 0,
+                    ]);
+                    $GLOBALS['nowscrobbling_last_meta'] = $meta;
+                    $request_cache[$transient_key] = $existing;
+                    return $existing;
+                }
+                // No existing data to renew; treat as miss
+                $data = null;
+            }
         
         // Behandle explizite Fehlerpayloads (z.B. { error: '...' })
         if ( is_array($data) && isset($data['error']) ) {
@@ -1349,6 +1357,44 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
             
             // Prüfen ob es sich um Fehlerdaten handelt
             $has_error = is_array($data) && isset($data['error']);
+            // Erkennen, ob es sich um eine leere Nutzlast handelt
+            $is_empty_array = is_array($data) && count($data) === 0;
+            // Dienst-/Key-spezifische Policy: Trakt-Listen (Activities/Last-*) nie mit leer/Fehler überschreiben
+            $is_trakt_list_key = (
+                strpos($transient_key, 'trakt_activities') !== false ||
+                strpos($transient_key, 'trakt_last_movies') !== false ||
+                strpos($transient_key, 'trakt_last_shows') !== false ||
+                strpos($transient_key, 'trakt_last_episodes') !== false
+            );
+            // Für Watching/Nowplaying wollen wir leere Zustände speichern (zeigt korrekt "nicht aktiv")
+            $is_trakt_watching_key = strpos($transient_key, 'trakt_watching') !== false;
+            $is_lastfm_scrobbles_key = strpos($transient_key, 'lastfm_scrobbles') !== false;
+            
+            // Ob Primär/Fallback aktualisiert werden sollen
+            $should_store_primary  = true;
+            $should_store_fallback = true;
+            
+            // Überschreibe nie Fallback/Primary mit Fehlerdaten für Trakt-Listen
+            if ($has_error && $is_trakt_list_key) {
+                $should_store_primary  = false;
+                $should_store_fallback = false;
+            }
+            // Überschreibe nie Fallback/Primary mit leeren Daten für Trakt-Listen
+            if ($is_empty_array && $is_trakt_list_key) {
+                $should_store_primary  = false;
+                $should_store_fallback = false;
+            }
+            // Für Last.fm Scrobbles leere Daten nicht als Fallback speichern (alte Anzeige behalten),
+            // Primär aber aktualisieren, damit TTL/Frische korrekt ist
+            if ($is_empty_array && $is_lastfm_scrobbles_key) {
+                $should_store_fallback = false;
+            }
+            // Für Watching explizit: leere Zustände sind valide und dürfen gespeichert werden
+            if ($is_trakt_watching_key) {
+                $should_store_primary  = true;
+                // Fallback ist für Watching irrelevant → nicht notwendig zu überschreiben
+                // (lassen wir $should_store_fallback unverändert)
+            }
             if ($has_error) {
                 // Bei Fehlerdaten kürzeres TTL verwenden, damit bald ein neuer Versuch folgt
                 $ttl_to_use = min($ttl_to_use, 120); // max 2 Minuten für Fehlerdaten
@@ -1399,8 +1445,14 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
                         $data_to_store = ['__ns_compressed' => true, 'data' => base64_encode(gzcompress(serialize($data), 9))];
                     }
                 }
-                
-                $cache_set = set_transient($transient_key, $data_to_store, $ttl_to_use);
+
+                // Nur speichern, wenn Richtlinie es erlaubt
+                if ($should_store_primary) {
+                    $cache_set = set_transient($transient_key, $data_to_store, $ttl_to_use);
+                } else {
+                    $cache_set = false;
+                    nowscrobbling_log("Primär-Cache nicht überschrieben für {$transient_key} (Policy: bewahre frühere Daten)");
+                }
             } catch (Exception $e) {
                 nowscrobbling_log("Exception beim Speichern des Transient für {$transient_key}: " . $e->getMessage());
             }
@@ -1433,12 +1485,16 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
                         $minimal_size = strlen(maybe_serialize($minimal_data));
                         nowscrobbling_log("Minimale Datengröße: {$minimal_size} Bytes - letzter Versuch zum Speichern");
                         
-                        // Letzter Versuch mit stark reduzierten Daten
-                        $cache_set = set_transient($transient_key, $minimal_data, $ttl_to_use);
-                        if ($cache_set) {
-                            nowscrobbling_log("Transient erfolgreich gespeichert nach Datenreduktion");
+                        // Letzter Versuch mit stark reduzierten Daten (nur wenn erlaubt)
+                        if ($should_store_primary) {
+                            $cache_set = set_transient($transient_key, $minimal_data, $ttl_to_use);
+                            if ($cache_set) {
+                                nowscrobbling_log("Transient erfolgreich gespeichert nach Datenreduktion");
+                            } else {
+                                nowscrobbling_log("Fehler beim Speichern des Transient für {$transient_key} trotz Datenreduktion");
+                            }
                         } else {
-                            nowscrobbling_log("Fehler beim Speichern des Transient für {$transient_key} trotz Datenreduktion");
+                            nowscrobbling_log("Primär-Cache weiterhin nicht überschrieben für {$transient_key} (Policy)");
                         }
                     } else {
                         nowscrobbling_log("Fehler beim Speichern des Transient für {$transient_key} - keine weiteren Optimierungen möglich");
@@ -1490,8 +1546,14 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
                         $fallback_data_to_store = ['__ns_compressed' => true, 'data' => base64_encode(gzcompress(serialize($data), 9))];
                     }
                 }
-                
-                $fallback_set = set_transient($fallback_key, $fallback_data_to_store, $fallback_expiration);
+
+                // Fallback nur aktualisieren, wenn Policy es erlaubt
+                if ($should_store_fallback) {
+                    $fallback_set = set_transient($fallback_key, $fallback_data_to_store, $fallback_expiration);
+                } else {
+                    $fallback_set = false;
+                    nowscrobbling_log("Fallback nicht überschrieben für {$transient_key} (Policy: bewahre frühere Daten)");
+                }
             } catch (Exception $e) {
                 nowscrobbling_log("Exception beim Speichern des Fallback-Cache für {$transient_key}: " . $e->getMessage());
             }
@@ -1525,11 +1587,15 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
                         nowscrobbling_log("Minimale Fallback-Datengröße: {$minimal_size} Bytes - letzter Versuch zum Speichern");
                         
                         // Letzter Versuch mit stark reduzierten Daten
-                        $fallback_set = set_transient($fallback_key, $minimal_data, $fallback_expiration);
-                        if ($fallback_set) {
-                            nowscrobbling_log("Fallback-Cache erfolgreich gespeichert nach Datenreduktion");
+                        if ($should_store_fallback) {
+                            $fallback_set = set_transient($fallback_key, $minimal_data, $fallback_expiration);
+                            if ($fallback_set) {
+                                nowscrobbling_log("Fallback-Cache erfolgreich gespeichert nach Datenreduktion");
+                            } else {
+                                nowscrobbling_log("Fehler beim Speichern des Fallback-Cache für {$transient_key} trotz Datenreduktion");
+                            }
                         } else {
-                            nowscrobbling_log("Fehler beim Speichern des Fallback-Cache für {$transient_key} trotz Datenreduktion");
+                            nowscrobbling_log("Fallback weiterhin nicht überschrieben für {$transient_key} (Policy)");
                         }
                     } else {
                         nowscrobbling_log("Fehler beim Speichern des Fallback-Cache für {$transient_key} - keine weiteren Optimierungen möglich");
@@ -1562,19 +1628,30 @@ function nowscrobbling_get_or_set_transient($transient_key, $callback, $expirati
             nowscrobbling_log("Transient gesetzt: {$transient_key}, gültig bis " . $expires_local . ($has_error ? " (enthält Fehlerdaten)" : ""));
             
             // Meta für Diagnostik speichern
-            $meta = nowscrobbling_cache_meta($transient_key, [
+            $meta_payload = [
                 'saved_at' => $now,
                 'expires_at' => $now + (int) $ttl_to_use,
                 'ttl' => (int) $ttl_to_use,
                 'last_access' => $now,
                 'service' => $service,
                 'fallback_key' => $fallback_key,
-                'fallback_saved_at' => $now,
-                'fallback_expires_at' => $now + (int) $fallback_expiration,
                 'fallback_exists' => 1,
                 'has_error' => $has_error ? 1 : 0,
-            ]);
+            ];
+            if ($should_store_fallback) {
+                $meta_payload['fallback_saved_at'] = $now;
+                $meta_payload['fallback_expires_at'] = $now + (int) $fallback_expiration;
+            }
+            $meta = nowscrobbling_cache_meta($transient_key, $meta_payload);
             $GLOBALS['nowscrobbling_last_meta'] = $meta;
+            
+            // Entscheidung: Für Trakt-Listen bei leer/Fehler lieber Fallback sofort zurückgeben
+            if ($is_trakt_list_key && ($is_empty_array || $has_error) && $has_fallback) {
+                $request_cache[$transient_key] = $fallback_data;
+                $GLOBALS['nowscrobbling_last_source'] = 'fallback';
+                nowscrobbling_metrics_update( $service, 'fallback_hits' );
+                return $fallback_data;
+            }
             
             // In-Request-Cache aktualisieren
             $request_cache[$transient_key] = $data;
