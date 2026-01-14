@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.3.2] - 2025-01-14
+
+### Added
+- **docs**: CLAUDE.md for Claude Code collaboration guidelines
+- **api**: `nowscrobbling_log_throttled()` function to reduce log spam
+- **api**: Deep key sorting for deterministic cache key generation
+
+### Changed
+- **api**: Optimized HTTP request headers (gzip, connection close, reduced timeout)
+- **api**: Reduced default timeout from 10s to 5s, disabled redirects
+- **docs**: Modernized cursorrules, now references CLAUDE.md
+- **config**: Extended .gitignore with IDE files, logs, and local configs
+
+### Fixed
+- **css**: Added margin-top for mobile responsive views
+
+---
+
 ## [1.3.1.2] - 2025-08-10
 
 ### Changes

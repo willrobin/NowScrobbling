@@ -162,7 +162,14 @@ function nowscrobbling_build_cache_key( $base, $parts = [] ) {
     if ( !is_array( $parts ) ) {
         $parts = [];
     }
-    
+    // Deep sort keys for deterministic hashing
+    $deep_ksort = function (&$arr) use (&$deep_ksort) {
+        if (!is_array($arr)) return;
+        ksort($arr);
+        foreach ($arr as &$v) { if (is_array($v)) { $deep_ksort($v); } }
+    };
+    $deep_ksort($parts);
+
     if ( $parts ) {
         $base .= ':' . substr( md5( wp_json_encode( $parts ) ), 0, 12 );
     }
@@ -201,6 +208,15 @@ function nowscrobbling_log($message) {
         // Versuche einen Notfall-Log-Eintrag zu erstellen
         error_log('NowScrobbling: Fehler beim Speichern des Debug-Logs: ' . $message);
     }
+}
+
+function nowscrobbling_log_throttled($bucket, $message, $seconds = 60) {
+    $guard_key = 'ns_log_guard_' . sanitize_key($bucket);
+    if ( get_transient($guard_key) ) {
+        return; // kürzlich geloggt
+    }
+    set_transient($guard_key, 1, max(5, (int)$seconds));
+    nowscrobbling_log($message);
 }
 
 // Test-Log-Nachricht beim Laden der Datei (nur wenn Debug aktiviert ist)
@@ -288,14 +304,16 @@ function nowscrobbling_handle_api_error($error, $message, $service = 'generic')
  */
 function nowscrobbling_fetch_api_data($url, $headers = [], $args = [], $cache_key = '') {
     $args = wp_parse_args($args, [
-        'timeout'     => 10,
-        'redirection' => 3,
+        'timeout'     => 5,
+        'redirection' => 0,
         'headers'     => [],
     ]);
-
+    
     $args['headers'] = array_merge([
-        'User-Agent' => nowscrobbling_user_agent(),
-        'Accept'     => 'application/json',
+        'User-Agent'      => nowscrobbling_user_agent(),
+        'Accept'          => 'application/json',
+        'Accept-Encoding' => 'gzip',
+        'Connection'      => 'close',
     ], (array) $headers, (array) $args['headers']);
 
     // Add ETag support if cache key is provided
@@ -312,7 +330,7 @@ function nowscrobbling_fetch_api_data($url, $headers = [], $args = [], $cache_ke
     
     // Prüfen, ob für diesen Dienst ein Cooldown aktiv ist
     if (nowscrobbling_should_cooldown($service)) {
-        nowscrobbling_log("API-Request für $service übersprungen aufgrund aktivem Cooldown: $url");
+        nowscrobbling_log_throttled('cooldown_'.$service, "API-Request für $service übersprungen aufgrund aktivem Cooldown: $url", 60);
         nowscrobbling_metrics_update( $service, 'cooldown_skips' );
         return null;
     }
@@ -472,6 +490,8 @@ function nowscrobbling_fetch_lastfm_data($method, $params = [])
         $method = 'user.' . $method;
     }
     
+    // Stabilisiere Param-Reihenfolge
+ksort($params);
     $url = NOWSCROBBLING_LASTFM_API_URL . '?method=' . rawurlencode($method) . '&' . http_build_query($params);
     
     // Use ETag per URL to support 304 Not Modified

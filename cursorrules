@@ -1,88 +1,105 @@
-# Cursor Rules for NowScrobbling (WordPress Plugin)
+# Cursor Rules for NowScrobbling
 
-These rules guide AI-assisted edits. They codify architecture, file placement, naming, security, caching, and UX conventions used in this repo.
+> See `CLAUDE.md` for full project documentation, architecture, and v1.4 roadmap.
 
-## Project overview
-- WordPress plugin to surface last.fm and trakt.tv activity
-- SSR output via shortcodes + progressive hydration via AJAX polling
-- Aggressive but polite caching (transients + fallback + ETag)
-- Admin UI for configuration, diagnostics, metrics, cache control
+## Quick Context
 
-## Directory map (authoritative)
-- `nowscrobbling/nowscrobbling.php`: Bootstrap only (constants, i18n, enqueue, cron, includes, hooks). Do not add feature logic here.
-- `nowscrobbling/includes/api-functions.php`: API access, caching primitives, metrics, logging, background refresh.
-- `nowscrobbling/includes/shortcodes.php`: All shortcode definitions and rendering helpers.
-- `nowscrobbling/includes/admin-settings.php`: Settings registration, settings page, diagnostics UI.
-- `nowscrobbling/includes/ajax.php`: Public AJAX endpoints for rendering shortcodes; admin-only AJAX for cache and debug.
-- `nowscrobbling/public/css/*`: Public CSS for shortcode output.
-- `nowscrobbling/public/js/ajax-load.js`: Client polling + refresh logic.
-- `nowscrobbling/languages/*`: Translations (`Text Domain: nowscrobbling`).
+WordPress plugin for Last.fm + Trakt.tv activity display. SSR + AJAX hydration. Aggressive caching with graceful fallbacks.
 
-## Naming & placement
-- Prefix PHP functions with `nowscrobbling_` (helpers) or `nowscr_` (shortcodes only).
-- New shortcodes go into `includes/shortcodes.php` and must follow the SSR+AJAX wrapper pattern below.
-- New AJAX endpoints go into `includes/ajax.php` with strict nonce and whitelist checks.
-- API integrations/wrappers and cache helpers belong in `includes/api-functions.php`.
-- Add i18n strings using the `nowscrobbling` text domain.
+**Core Philosophy**: "Old data is better than error messages"
 
-## Shortcode SSR + AJAX wrapper pattern (mandatory)
-- Always return markup wrapped by `nowscrobbling_wrap_output($slug, $html, $hash, $nowplaying)`.
-  - Wrapper attributes: `data-nowscrobbling-shortcode`, `data-ns-hash`, optional `data-ns-nowplaying="1"`.
-  - Keep output concise, anchor(s) with class `bubble`. No heavy markup.
-- Compute `$hash` via `nowscrobbling_make_hash(...)` so the client can diff.
-- If you add a new shortcode:
-  1) Implement SSR in `includes/shortcodes.php`
-  2) Add its tag to `nowscrobbling_list_shortcodes()` in `nowscrobbling.php` so conditional assets work
-  3) Whitelist it in `includes/ajax.php` `$allowed_shortcodes`
+## Directory Rules
 
-## Caching & network (mandatory)
-- Use `nowscrobbling_get_or_set_transient($key, $callback, $expiration, $force_refresh=false)` for all cacheable data.
-  - This populates fallback caches and diagnostics meta for admin preview.
-- Use `nowscrobbling_fetch_api_data($url, $headers=[], $args=[], $cache_key='')` for HTTP calls.
-  - Honors User-Agent, JSON accept, ETag, metrics, cooldowns, and logs. Do not call `wp_safe_remote_get` directly.
-- Respect per-service cooldowns via `nowscrobbling_should_cooldown($service)`.
-- Choose expiration with `nowscrobbling_cache_minutes('lastfm'|'trakt'|default)`; avoid hardcoding seconds.
+| Path | Purpose | Rules |
+|------|---------|-------|
+| `nowscrobbling.php` | Bootstrap only | NO feature logic here |
+| `includes/api-functions.php` | API + caching | All HTTP goes through helpers |
+| `includes/shortcodes.php` | Shortcode defs | Must use `wrap_output()` pattern |
+| `includes/admin-settings.php` | Admin UI | Capability checks required |
+| `includes/ajax.php` | AJAX handlers | Nonce + whitelist validation |
 
-## Assets & performance
-- Only enqueue public CSS/JS when `nowscrobbling_should_load_assets()` is true (see `nowscrobbling.php`).
-- `ajax-load.js` handles polling/backoff based on admin-configured intervals. Do not duplicate polling logic.
+## Naming Conventions
 
-## Security & quality
-- Always sanitize incoming data (`sanitize_text_field`, `sanitize_key`, etc.).
-- Validate booleans with `wp_validate_boolean`/strict checks.
-- Verify nonces for any AJAX or form actions (`wp_verify_nonce`).
-- Gate admin-only actions behind `current_user_can('manage_options')`.
-- Never echo output in plugin bootstrap; only via hooks/shortcodes/admin pages.
-- Log with `nowscrobbling_log()` when adding meaningful events.
+```
+Functions:  nowscrobbling_*  (helpers)
+            nowscr_*         (shortcodes only)
+Options:    ns_*             (new options)
+Text:       __('...', 'nowscrobbling')
+```
 
-## UX conventions
-- Inline text, compact "bubble" links, minimal HTML.
-- Use `nowplaying.gif` only in History/Trakt-Shortcodes, not in the indicator text variant.
-- Date/time formatted via `date_i18n(get_option('date_format') . ' ' . get_option('time_format'))`.
+## Mandatory Patterns
 
-## Extending the plugin
-- New Last.fm endpoints: create a fetcher using `nowscrobbling_fetch_lastfm_data`, cache with transients, expose via shortcode.
-- New Trakt endpoints: use `nowscrobbling_fetch_trakt_data`, keep headers and cache discipline.
-- New metrics: extend `nowscrobbling_metrics_update` fields cautiously; surface in admin if needed.
+### Shortcode Output
+```php
+return nowscrobbling_wrap_output($slug, $html, $hash, $nowplaying);
+```
 
-## Testing checklist for changes
-- Admin settings page loads, shows version, cron status, cache counts.
-- API Test (admin) succeeds or degrades with clear messages.
-- Shortcodes render server-side and enhance via AJAX without layout shift.
-- Transient keys populate and clear via the admin button.
-- No PHP notices in debug mode; no fatal errors when credentials are missing.
+### Caching (ALWAYS use helpers)
+```php
+// Correct
+$data = nowscrobbling_get_or_set_transient($key, $callback, $ttl);
+$response = nowscrobbling_fetch_api_data($url, $headers, $args, $cache_key);
 
-## House style (for AI edits)
-- Prefer readable, explicit code over cleverness.
-- Early returns, handle errors first, avoid deep nesting.
-- Sanitize right before use; escape at the output boundary (`esc_html`, `esc_attr`, `esc_url`).
-- Keep function names descriptive; avoid abbreviations.
-- Do not refactor unrelated code in the same edit.
+// WRONG - never bypass caching
+$response = wp_remote_get($url);
+```
 
-## Do / Don’t
-- DO: Reuse helpers (`*_fetch_*`, `*_get_or_set_transient`, `*_wrap_output`).
-- DO: Keep bootstrap file minimal.
-- DO: Add new shortcode tags to the loader list and AJAX whitelist.
-- DON’T: Bypass caching or cooldowns.
-- DON’T: Introduce new global state unless necessary.
-- DON’T: Add front-end frameworks or heavy dependencies.
+### Security
+```php
+// Input: sanitize AFTER unslash
+$value = sanitize_text_field(wp_unslash($_POST['key']));
+
+// Output: escape at render
+echo esc_html($text);
+echo esc_attr($attr);
+echo esc_url($url);
+
+// AJAX: verify nonce
+wp_verify_nonce($nonce, 'nowscrobbling_nonce');
+
+// Admin: check capability
+if (!current_user_can('manage_options')) wp_die();
+```
+
+## Code Style
+
+- Early returns, handle errors first
+- Flat structure, avoid deep nesting
+- Descriptive function names (no abbreviations)
+- Sanitize at input, escape at output
+- Log with `nowscrobbling_log()` for significant events
+
+## Do / Don't
+
+### DO
+- Reuse existing helpers (`*_fetch_*`, `*_get_or_set_transient`, `*_wrap_output`)
+- Keep bootstrap file minimal
+- Add new shortcodes to whitelist AND shortcode list
+- Test with debug logging enabled
+- Follow existing patterns in the codebase
+
+### DON'T
+- Bypass caching or cooldowns
+- Add frontend frameworks or heavy dependencies
+- Echo output in bootstrap file
+- Introduce new global state without need
+- Refactor unrelated code in the same edit
+- Commit credentials or API keys
+
+## Testing Checklist
+
+Before committing:
+- [ ] Admin settings page loads
+- [ ] API Test succeeds (or fails gracefully)
+- [ ] Shortcodes render SSR + AJAX refresh
+- [ ] Cache clear works
+- [ ] No PHP notices in debug mode
+- [ ] No fatal errors when credentials missing
+
+## Version Bump
+
+When releasing:
+1. `nowscrobbling.php` header `Version:`
+2. `NOWSCROBBLING_VERSION` constant
+3. `README.md` version mention
+4. `CHANGELOG.md` entry

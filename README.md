@@ -1,23 +1,30 @@
 # NowScrobbling WordPress Plugin
 
-**Version 1.3.1.2** - Stabile, performante und saubere Version für Last.fm und Trakt.tv Integration
+**Version 1.3.2** - Stabile, performante und saubere Version für Last.fm und Trakt.tv Integration
 
-## 🎯 Übersicht
+## Übersicht
 
-NowScrobbling ist ein WordPress-Plugin, das Last.fm und Trakt.tv Daten per Shortcode darstellt. Die Version 1.3.0 bringt erhebliche Performance-Verbesserungen, bessere Caching-Strategien und eine moderne Benutzeroberfläche.
+NowScrobbling ist ein WordPress-Plugin, das Last.fm und Trakt.tv Daten per Shortcode darstellt. Die Version 1.3.x bringt erhebliche Performance-Verbesserungen, bessere Caching-Strategien und eine moderne Benutzeroberfläche.
 
-## ✨ Neue Features in Version 1.3.1.2
- 
-### 🔧 Verbesserungen
-- Kleinere Stabilitätsverbesserungen und Robustheit in Admin-Ansicht und AJAX-Aktualisierung
-- Versionierung und Metadaten aktualisiert
+## Neue Features in Version 1.3.2
 
-### 🧹 Wartung
-- Interne Konsistenz der Optionen und Fallback-Logik weiter vereinheitlicht
+### Dokumentation
+- **CLAUDE.md**: Neue Projektdokumentation für Claude Code Zusammenarbeit
+- **cursorrules**: Modernisiert und auf CLAUDE.md verweisend
+- **.gitignore**: Erweitert um IDE-Dateien, Logs und lokale Konfigurationen
 
-—
+### API-Verbesserungen
+- `nowscrobbling_log_throttled()` Funktion zur Reduzierung von Log-Spam
+- Deterministische Cache-Key-Generierung durch Deep Key Sorting
+- Optimierte HTTP-Header (gzip, connection close)
+- Reduzierter Timeout (10s -> 5s) für schnellere Fehlererkennung
 
-## ✨ Neue Features in Version 1.3.1.1
+### Bugfixes
+- CSS margin-top für mobile Ansichten korrigiert
+
+---
+
+## Neue Features in Version 1.3.1.x
 ### 🚀 Performance & UX
 - **Server-Side Rendering (SSR)**: Inhalte werden sofort beim Laden aus dem Cache angezeigt
 - **Intelligentes AJAX-Update**: Nur bei Änderungen im Inhalt wird der DOM ersetzt (Hash-Vergleich)

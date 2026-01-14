@@ -223,6 +223,10 @@
     .bubble.truncated {
         max-width: 250px;
     }
+    
+    .nowscrobbling {
+        margin-top: 10px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -232,6 +236,7 @@
     
     .nowscrobbling {
         font-size: 0.8rem;
+        margin-top: 15px;
     }
 }
 
