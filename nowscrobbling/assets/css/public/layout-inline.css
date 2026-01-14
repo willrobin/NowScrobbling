@@ -1,0 +1,46 @@
+/**
+ * NowScrobbling Inline Layout
+ *
+ * Compact bubble-style links.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+.ns-layout--inline {
+    display: inline;
+}
+
+.ns-item--inline {
+    display: inline;
+}
+
+.ns-item__image--inline {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--ns-radius-sm);
+    vertical-align: middle;
+    margin-right: var(--ns-space-xs);
+}
+
+.ns-item__link {
+    font-weight: var(--ns-font-weight-medium);
+}
+
+.ns-item__separator {
+    margin: 0 var(--ns-space-xs);
+    color: var(--ns-color-text-light);
+}
+
+.ns-item__artist {
+    color: var(--ns-color-text-muted);
+}
+
+.ns-item--nowplaying .ns-item__link {
+    color: var(--ns-color-nowplaying);
+}
+
+/* Inline nowscrobbling wrapper */
+.nowscrobbling--inline {
+    display: inline;
+}

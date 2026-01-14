@@ -1,0 +1,215 @@
+/**
+ * NowScrobbling Shortcode Builder Styles
+ *
+ * Additional styles for the shortcode builder interface.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* ==========================================================================
+   BUILDER LAYOUT
+   ========================================================================== */
+
+.ns-shortcode-builder {
+    min-height: 500px;
+}
+
+.ns-builder-sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.ns-builder-attributes {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Custom scrollbar */
+.ns-builder-attributes::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ns-builder-attributes::-webkit-scrollbar-track {
+    background: var(--ns-admin-bg);
+    border-radius: 3px;
+}
+
+.ns-builder-attributes::-webkit-scrollbar-thumb {
+    background: var(--ns-admin-border);
+    border-radius: 3px;
+}
+
+.ns-builder-attributes::-webkit-scrollbar-thumb:hover {
+    background: #8c8f94;
+}
+
+/* ==========================================================================
+   FIELD TYPES
+   ========================================================================== */
+
+.ns-builder-field input[type="checkbox"] {
+    width: auto;
+}
+
+.ns-builder-field .description {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--ns-admin-text-secondary);
+}
+
+/* ==========================================================================
+   PREVIEW AREA
+   ========================================================================== */
+
+.ns-builder-preview-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--ns-admin-border);
+    background: var(--ns-admin-bg);
+    font-weight: 500;
+}
+
+.ns-builder-preview {
+    position: relative;
+    background: #fff;
+}
+
+.ns-builder-preview::before {
+    content: 'Preview';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    background: var(--ns-admin-bg);
+    border-radius: var(--ns-admin-radius);
+    font-size: 11px;
+    color: var(--ns-admin-text-secondary);
+    text-transform: uppercase;
+}
+
+/* Dark background option for preview */
+.ns-builder-preview--dark {
+    background: #1a1a2e;
+}
+
+.ns-builder-preview--dark::before {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ==========================================================================
+   OUTPUT AREA
+   ========================================================================== */
+
+.ns-builder-output-wrap {
+    background: var(--ns-admin-bg);
+}
+
+.ns-builder-output {
+    padding: 10px;
+    background: #fff;
+    border: 1px solid var(--ns-admin-border);
+    border-radius: var(--ns-admin-radius);
+}
+
+.ns-copy-shortcode {
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   SHORTCODE SELECT
+   ========================================================================== */
+
+#ns-builder-shortcode {
+    font-size: 14px;
+    padding: 8px 12px;
+}
+
+.ns-shortcode-description {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--ns-admin-bg);
+    border-radius: var(--ns-admin-radius);
+    font-size: 13px;
+    color: var(--ns-admin-text-secondary);
+}
+
+/* ==========================================================================
+   ATTRIBUTE GROUPS
+   ========================================================================== */
+
+.ns-builder-group {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--ns-admin-border);
+}
+
+.ns-builder-group:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.ns-builder-group__title {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--ns-admin-text-secondary);
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   LOADING STATE
+   ========================================================================== */
+
+.ns-builder-preview.ns-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ns-builder-preview.ns-loading::before {
+    content: 'Loading...';
+    z-index: 1;
+}
+
+/* ==========================================================================
+   ERROR STATE
+   ========================================================================== */
+
+.ns-error {
+    color: var(--ns-admin-error);
+    padding: 20px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+    .ns-shortcode-builder {
+        grid-template-columns: 250px 1fr;
+    }
+}
+
+@media (max-width: 782px) {
+    .ns-builder-sidebar {
+        order: 2;
+    }
+
+    .ns-builder-main {
+        order: 1;
+    }
+
+    .ns-builder-attributes {
+        max-height: none;
+    }
+}

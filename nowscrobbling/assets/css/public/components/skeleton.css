@@ -1,0 +1,273 @@
+/**
+ * Skeleton Loading Component Styles
+ *
+ * Styles for placeholder loading animations.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* ==========================================================================
+   BASE SKELETON
+   ========================================================================== */
+
+.ns-skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--ns-bg-secondary);
+    border-radius: var(--ns-radius-sm);
+}
+
+.ns-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    animation: ns-skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes ns-skeleton-shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Dark mode shimmer adjustment */
+@media (prefers-color-scheme: dark) {
+    .ns-skeleton::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.05),
+            transparent
+        );
+    }
+}
+
+/* ==========================================================================
+   SKELETON SHAPES
+   ========================================================================== */
+
+.ns-skeleton--text {
+    height: 1em;
+    width: 100%;
+    border-radius: var(--ns-radius-sm);
+}
+
+.ns-skeleton--title {
+    height: 1.25em;
+    width: 60%;
+}
+
+.ns-skeleton--circle {
+    border-radius: 50%;
+}
+
+.ns-skeleton--square {
+    aspect-ratio: 1 / 1;
+}
+
+.ns-skeleton--poster {
+    aspect-ratio: 2 / 3;
+}
+
+.ns-skeleton--cover {
+    aspect-ratio: 1 / 1;
+}
+
+/* ==========================================================================
+   SKELETON SIZES
+   ========================================================================== */
+
+.ns-skeleton--small {
+    width: 40px;
+    height: 40px;
+}
+
+.ns-skeleton--medium {
+    width: 64px;
+    height: 64px;
+}
+
+.ns-skeleton--large {
+    width: 120px;
+    height: 120px;
+}
+
+/* ==========================================================================
+   SKELETON LAYOUTS
+   ========================================================================== */
+
+/* Inline skeleton */
+.ns-skeleton-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ns-spacing-sm);
+}
+
+.ns-skeleton-inline__text {
+    height: 1em;
+    width: 120px;
+}
+
+/* Card skeleton */
+.ns-skeleton-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ns-spacing-sm);
+}
+
+.ns-skeleton-card__image {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--ns-radius-md);
+}
+
+.ns-skeleton-card__title {
+    height: 1em;
+    width: 80%;
+}
+
+.ns-skeleton-card__subtitle {
+    height: 0.875em;
+    width: 60%;
+}
+
+/* List skeleton */
+.ns-skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ns-spacing-md);
+}
+
+.ns-skeleton-list__item {
+    display: flex;
+    gap: var(--ns-spacing-md);
+}
+
+.ns-skeleton-list__image {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    border-radius: var(--ns-radius-md);
+}
+
+.ns-skeleton-list__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ns-spacing-xs);
+}
+
+.ns-skeleton-list__title {
+    height: 1em;
+    width: 70%;
+}
+
+.ns-skeleton-list__meta {
+    height: 0.75em;
+    width: 40%;
+}
+
+/* Grid skeleton */
+.ns-skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--ns-spacing-md);
+}
+
+.ns-skeleton-grid__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ns-spacing-xs);
+}
+
+.ns-skeleton-grid__image {
+    aspect-ratio: 2 / 3;
+    border-radius: var(--ns-radius-md);
+}
+
+.ns-skeleton-grid__title {
+    height: 0.875em;
+    width: 90%;
+}
+
+/* ==========================================================================
+   SKELETON ANIMATION VARIANTS
+   ========================================================================== */
+
+/* Pulse animation (alternative to shimmer) */
+.ns-skeleton--pulse {
+    animation: ns-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.ns-skeleton--pulse::after {
+    display: none;
+}
+
+@keyframes ns-skeleton-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Disabled animation */
+.ns-skeleton--static::after {
+    animation: none;
+    display: none;
+}
+
+/* ==========================================================================
+   LOADING CONTAINER
+   ========================================================================== */
+
+.ns-loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ns-spacing-md);
+    padding: var(--ns-spacing-md);
+}
+
+.ns-loading--center {
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+/* ==========================================================================
+   LOADING SPINNER (alternative to skeleton)
+   ========================================================================== */
+
+.ns-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--ns-bg-secondary);
+    border-top-color: var(--ns-accent);
+    border-radius: 50%;
+    animation: ns-spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes ns-spinner-rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.ns-spinner--small {
+    width: 16px;
+    height: 16px;
+}
+
+.ns-spinner--large {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+}

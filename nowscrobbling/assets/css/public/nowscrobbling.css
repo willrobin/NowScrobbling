@@ -1,0 +1,20 @@
+/**
+ * NowScrobbling Main Stylesheet
+ *
+ * Combines all CSS modules.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* CSS Variables / Design Tokens */
+@import url('variables.css');
+
+/* Base Styles */
+@import url('base.css');
+
+/* Layout Styles */
+@import url('layout-inline.css');
+@import url('layout-card.css');
+@import url('layout-grid.css');
+@import url('layout-list.css');

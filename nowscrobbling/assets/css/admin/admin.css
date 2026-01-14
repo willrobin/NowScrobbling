@@ -1,0 +1,386 @@
+/**
+ * NowScrobbling Admin Styles
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* ==========================================================================
+   ADMIN VARIABLES
+   ========================================================================== */
+
+:root {
+    --ns-admin-primary: #2271b1;
+    --ns-admin-primary-hover: #135e96;
+    --ns-admin-success: #00a32a;
+    --ns-admin-error: #d63638;
+    --ns-admin-warning: #dba617;
+    --ns-admin-border: #c3c4c7;
+    --ns-admin-bg: #f0f0f1;
+    --ns-admin-card-bg: #fff;
+    --ns-admin-text: #1d2327;
+    --ns-admin-text-secondary: #50575e;
+    --ns-admin-radius: 4px;
+    --ns-admin-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================================================
+   ADMIN WRAPPER
+   ========================================================================== */
+
+.ns-admin-wrap {
+    max-width: 1200px;
+    margin: 20px 20px 0 0;
+}
+
+.ns-admin-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ns-admin-header h1 {
+    margin: 0;
+    font-size: 23px;
+    font-weight: 400;
+}
+
+.ns-admin-version {
+    background: var(--ns-admin-bg);
+    padding: 2px 8px;
+    border-radius: var(--ns-admin-radius);
+    font-size: 12px;
+    color: var(--ns-admin-text-secondary);
+}
+
+/* ==========================================================================
+   TABS
+   ========================================================================== */
+
+.ns-admin-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--ns-admin-border);
+}
+
+.ns-tab {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--ns-admin-text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ns-tab:hover {
+    color: var(--ns-admin-text);
+}
+
+.ns-tab--active {
+    color: var(--ns-admin-primary);
+    border-bottom-color: var(--ns-admin-primary);
+}
+
+.ns-tab-panel {
+    display: none;
+}
+
+.ns-tab-panel--active {
+    display: block;
+}
+
+/* ==========================================================================
+   CARDS
+   ========================================================================== */
+
+.ns-card {
+    background: var(--ns-admin-card-bg);
+    border: 1px solid var(--ns-admin-border);
+    border-radius: var(--ns-admin-radius);
+    box-shadow: var(--ns-admin-shadow);
+    margin-bottom: 20px;
+}
+
+.ns-card__header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--ns-admin-border);
+}
+
+.ns-card__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.ns-card__body {
+    padding: 16px;
+}
+
+.ns-card__footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--ns-admin-border);
+    background: var(--ns-admin-bg);
+}
+
+/* ==========================================================================
+   FORM ELEMENTS
+   ========================================================================== */
+
+.ns-form-table th {
+    width: 200px;
+    padding: 20px 10px 20px 0;
+}
+
+.ns-form-table td {
+    padding: 15px 10px;
+}
+
+.ns-input {
+    width: 100%;
+    max-width: 400px;
+}
+
+.ns-input--small {
+    max-width: 100px;
+}
+
+.ns-input--medium {
+    max-width: 200px;
+}
+
+.ns-select {
+    min-width: 150px;
+}
+
+.ns-description {
+    margin-top: 4px;
+    color: var(--ns-admin-text-secondary);
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+
+.ns-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--ns-admin-primary);
+    border: none;
+    border-radius: var(--ns-admin-radius);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ns-button:hover {
+    background: var(--ns-admin-primary-hover);
+}
+
+.ns-button--secondary {
+    background: #f6f7f7;
+    border: 1px solid var(--ns-admin-border);
+    color: var(--ns-admin-text);
+}
+
+.ns-button--secondary:hover {
+    background: #f0f0f1;
+    border-color: #8c8f94;
+}
+
+.ns-button--danger {
+    background: var(--ns-admin-error);
+}
+
+.ns-button--danger:hover {
+    background: #b32d2e;
+}
+
+.ns-button.ns-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   STATUS INDICATORS
+   ========================================================================== */
+
+.ns-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: var(--ns-admin-radius);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.ns-status--success {
+    background: rgba(0, 163, 42, 0.1);
+    color: var(--ns-admin-success);
+}
+
+.ns-status--error {
+    background: rgba(214, 54, 56, 0.1);
+    color: var(--ns-admin-error);
+}
+
+.ns-status--warning {
+    background: rgba(219, 166, 23, 0.1);
+    color: var(--ns-admin-warning);
+}
+
+.ns-connection-status {
+    margin-left: 10px;
+}
+
+/* ==========================================================================
+   SHORTCODE BUILDER
+   ========================================================================== */
+
+.ns-shortcode-builder {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+}
+
+.ns-builder-sidebar {
+    background: var(--ns-admin-card-bg);
+    border: 1px solid var(--ns-admin-border);
+    border-radius: var(--ns-admin-radius);
+    padding: 16px;
+}
+
+.ns-builder-main {
+    background: var(--ns-admin-card-bg);
+    border: 1px solid var(--ns-admin-border);
+    border-radius: var(--ns-admin-radius);
+}
+
+.ns-builder-field {
+    margin-bottom: 16px;
+}
+
+.ns-builder-field label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.ns-builder-field input[type="text"],
+.ns-builder-field input[type="number"],
+.ns-builder-field select {
+    width: 100%;
+}
+
+.ns-builder-preview {
+    padding: 20px;
+    min-height: 200px;
+    border-bottom: 1px solid var(--ns-admin-border);
+}
+
+.ns-builder-preview.ns-loading {
+    opacity: 0.5;
+}
+
+.ns-builder-output-wrap {
+    padding: 16px;
+    display: flex;
+    gap: 10px;
+}
+
+.ns-builder-output {
+    flex: 1;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   DEBUG LOG
+   ========================================================================== */
+
+.ns-log-viewer {
+    max-height: 400px;
+    overflow: auto;
+    background: #1d2327;
+    border-radius: var(--ns-admin-radius);
+    padding: 16px;
+}
+
+.ns-log-viewer pre {
+    margin: 0;
+    color: #e0e0e0;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.ns-log-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* ==========================================================================
+   CACHE DIAGNOSTICS
+   ========================================================================== */
+
+.ns-cache-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.ns-cache-stat {
+    background: var(--ns-admin-bg);
+    padding: 16px;
+    border-radius: var(--ns-admin-radius);
+    text-align: center;
+}
+
+.ns-cache-stat__value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ns-admin-primary);
+}
+
+.ns-cache-stat__label {
+    font-size: 12px;
+    color: var(--ns-admin-text-secondary);
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 782px) {
+    .ns-admin-wrap {
+        margin-right: 10px;
+    }
+
+    .ns-shortcode-builder {
+        grid-template-columns: 1fr;
+    }
+
+    .ns-form-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 0;
+    }
+
+    .ns-form-table td {
+        display: block;
+        padding-top: 8px;
+    }
+}

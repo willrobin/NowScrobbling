@@ -1,0 +1,149 @@
+/**
+ * NowScrobbling Grid Layout
+ *
+ * Letterboxd-style poster grid.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+.ns-layout--grid {
+    display: grid;
+    gap: var(--ns-grid-gap);
+    grid-template-columns: repeat(var(--ns-grid-cols), 1fr);
+}
+
+/* Responsive columns */
+.ns-grid--cols-2 {
+    --ns-grid-cols: 2;
+}
+
+.ns-grid--cols-3 {
+    --ns-grid-cols: 3;
+}
+
+.ns-grid--cols-4 {
+    --ns-grid-cols: 4;
+}
+
+.ns-grid--cols-5 {
+    --ns-grid-cols: 5;
+}
+
+.ns-grid--cols-6 {
+    --ns-grid-cols: 6;
+}
+
+@media (max-width: 768px) {
+    .ns-layout--grid {
+        --ns-grid-cols: 3;
+    }
+
+    .ns-grid--cols-2 {
+        --ns-grid-cols: 2;
+    }
+}
+
+@media (max-width: 480px) {
+    .ns-layout--grid {
+        --ns-grid-cols: 2;
+    }
+}
+
+.ns-grid__item {
+    position: relative;
+}
+
+.ns-grid__link {
+    display: block;
+}
+
+.ns-grid__poster {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: var(--ns-radius-md);
+    background: var(--ns-color-bg-tertiary);
+    box-shadow: var(--ns-shadow-sm);
+    transition: transform var(--ns-transition-base), box-shadow var(--ns-transition-base);
+}
+
+.ns-grid__item:hover .ns-grid__poster {
+    transform: scale(1.03);
+    box-shadow: var(--ns-shadow-md);
+}
+
+.ns-grid__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ns-grid__poster--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ns-grid__placeholder-text {
+    font-size: 2rem;
+    font-weight: var(--ns-font-weight-bold);
+    color: var(--ns-color-text-light);
+    text-transform: uppercase;
+}
+
+.ns-grid__badge {
+    position: absolute;
+    top: var(--ns-space-sm);
+    right: var(--ns-space-sm);
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ns-grid__rating {
+    position: absolute;
+    bottom: var(--ns-space-sm);
+    right: var(--ns-space-sm);
+    font-size: var(--ns-font-size-xs);
+    font-weight: var(--ns-font-weight-bold);
+    padding: 2px 6px;
+    border-radius: var(--ns-radius-sm);
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--ns-color-rating);
+}
+
+.ns-grid__rating-max {
+    color: var(--ns-color-text-light);
+    font-weight: var(--ns-font-weight-normal);
+}
+
+.ns-grid__meta {
+    margin-top: var(--ns-space-sm);
+    text-align: center;
+}
+
+.ns-grid__title {
+    display: block;
+    font-size: var(--ns-font-size-sm);
+    font-weight: var(--ns-font-weight-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ns-grid__artist {
+    display: block;
+    font-size: var(--ns-font-size-xs);
+    color: var(--ns-color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Now playing item */
+.ns-grid__item--nowplaying .ns-grid__poster {
+    border: 2px solid var(--ns-color-nowplaying);
+}

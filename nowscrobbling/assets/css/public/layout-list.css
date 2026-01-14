@@ -1,0 +1,145 @@
+/**
+ * NowScrobbling List Layout
+ *
+ * Detailed list with artwork.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+.ns-layout--list {
+    /* Container */
+}
+
+.ns-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ns-list__item {
+    display: flex;
+    gap: var(--ns-space-md);
+    padding: var(--ns-space-md) 0;
+    border-bottom: 1px solid var(--ns-color-border-light);
+}
+
+.ns-list__item:first-child {
+    padding-top: 0;
+}
+
+.ns-list__item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.ns-list__artwork {
+    flex-shrink: 0;
+}
+
+.ns-list__image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: var(--ns-radius-md);
+    background: var(--ns-color-bg-secondary);
+}
+
+.ns-list__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ns-list__primary {
+    display: flex;
+    align-items: center;
+    gap: var(--ns-space-sm);
+    flex-wrap: wrap;
+}
+
+.ns-list__title {
+    font-weight: var(--ns-font-weight-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ns-list__year {
+    font-weight: var(--ns-font-weight-normal);
+    color: var(--ns-color-text-muted);
+}
+
+.ns-list__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--ns-font-size-xs);
+    font-weight: var(--ns-font-weight-bold);
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: var(--ns-radius-sm);
+    background: var(--ns-color-bg-tertiary);
+    color: var(--ns-color-text-muted);
+}
+
+.ns-list__badge--nowplaying {
+    background: var(--ns-color-nowplaying);
+    color: #fff;
+}
+
+.ns-list__secondary {
+    margin-top: 2px;
+}
+
+.ns-list__artist {
+    font-size: var(--ns-font-size-sm);
+    color: var(--ns-color-text-muted);
+}
+
+.ns-list__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ns-space-sm);
+    margin-top: var(--ns-space-xs);
+    font-size: var(--ns-font-size-xs);
+    color: var(--ns-color-text-light);
+}
+
+.ns-list__rating,
+.ns-list__playcount,
+.ns-list__rewatch,
+.ns-list__time {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ns-list__rating {
+    color: var(--ns-color-rating);
+}
+
+/* Now playing item */
+.ns-list__item--nowplaying {
+    background: linear-gradient(to right, rgba(0, 213, 115, 0.1), transparent);
+    margin: 0 calc(var(--ns-space-md) * -1);
+    padding-left: var(--ns-space-md);
+    padding-right: var(--ns-space-md);
+    border-radius: var(--ns-radius-md);
+    border-bottom-color: transparent;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .ns-list__image {
+        width: 48px;
+        height: 48px;
+    }
+
+    .ns-list__meta {
+        flex-direction: column;
+        gap: 2px;
+    }
+}
