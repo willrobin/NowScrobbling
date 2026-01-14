@@ -1,5 +1,51 @@
 # Changelog
 
+All notable changes to NowScrobbling will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.4.0] - 2025-01-15
+
+### Added
+- **Complete architectural rewrite** with modern PHP 8.0+ patterns
+- **PSR-4 autoloading** with custom Autoloader class
+- **Provider pattern** for extensible API integrations (LastFM, Trakt)
+- **4 layout options**: inline, card, grid, list
+- **Artwork support** for album covers and movie/TV posters
+- **TMDb integration** for high-quality posters (optional)
+- **Template engine** with theme override support
+- **Multi-layer caching**: memory, transient, and 7-day fallback
+- **7-tab admin dashboard**: Overview, Last.fm, Trakt, Display, Cache, Shortcodes, Debug
+- **Abstract shortcode base class** reducing code duplication
+- **Type-safe code** with PHP 8 typed properties and enums
+- **CSS variables** for easy theming
+- **Dark/Light mode** with automatic system preference detection
+- **AJAX handlers** with proper JSON sanitization
+- **Template path validation** with realpath() for security
+
+### Changed
+- **Minimum PHP version**: 8.0 (was 7.0)
+- **File structure**: Complete reorganization into `src/` directory
+- **Namespace**: All classes now under `NowScrobbling\` namespace
+- **Admin UI**: Modern tabbed interface replacing old settings page
+- **Caching strategy**: Three-layer system with graceful degradation
+- **Asset loading**: Conditional enqueue only on pages with shortcodes
+
+### Removed
+- Legacy `includes/` directory (admin-settings.php, ajax.php, api-functions.php, shortcodes.php)
+- Legacy `public/` and `admin/` directories
+- Unused cron job scaffolding
+- PHP 7.x compatibility code
+
+### Security
+- JSON sanitization in all AJAX handlers
+- Template path validation prevents directory traversal
+- Nonce verification on all AJAX endpoints
+- Capability checks for admin actions
+
+---
+
 ## [1.3.2] - 2025-01-14
 
 ### Added
@@ -18,119 +64,141 @@
 
 ---
 
+## [1.3.1.3] - 2025-01-10
+
+### Changed
+- Hardened Trakt cache fallback policy
+- Normalized activities handling
+- Reduced debug marker spam
+- Improved history fallback rendering
+
+---
+
 ## [1.3.1.2] - 2025-08-10
 
-### Changes
-- **core**: Version auf 1.3.1.2 angehoben (Header, Konstante, Doku)
-- **docs**: README auf 1.3.1.2 aktualisiert, Abschnitt ergänzt
+### Changed
+- Version bump to 1.3.1.2
+- Updated README documentation
 
-### Fixes
-- Kleinere Robustheitsanpassungen in Admin-/AJAX-Darstellung dokumentiert
+### Fixed
+- Minor robustness adjustments in Admin/AJAX handling
+
+---
 
 ## [1.3.1.1] - 2025-08-09
 
-### Fixes
-- **api**: Logging an Debug-Option gekoppelt, um Optionsgröße zu reduzieren
-- **api**: Doppeltes Request-Zählen bei HTTP 204 entfernt
-- **ajax**: Boolean-Handling ohne `wp_validate_boolean` (Kompatibilität WP 5.0)
+### Changed
+- Logging now tied to Debug option to reduce database bloat
+- Default values for `nowscrobbling_debug_log` and `ns_enable_rewatch` set to 0
+- Version bump to 1.3.1.1
 
-### Changes
-- **core**: Standardwerte für `nowscrobbling_debug_log` und `ns_enable_rewatch` auf 0 gesetzt
-- **core**: Version auf 1.3.1.1 angehoben
+### Fixed
+- Removed double request counting on HTTP 204
+- Boolean handling without `wp_validate_boolean` for WP 5.0 compatibility
+
+---
 
 ## [1.3.0] - 2025-08-09
 
-### Highlights
-- Server-Side Rendering (SSR) für initiale Ausgabe, danach schlankes AJAX-Nachladen
-- Bedingtes Laden von Assets nur auf Seiten mit Shortcodes
-- Verbesserte Transient-Strategie inkl. Fallback-Caches und ETag-Unterstützung
-- Hintergrund-Aktualisierung via WP-Cron (alle 5 Minuten)
-- Admin-Seite mit Status, Metriken, Cache-Tools und API-Tests
+### Added
+- **Server-Side Rendering (SSR)** for initial output, then lightweight AJAX refresh
+- **Conditional asset loading** only on pages with shortcodes
+- **Fallback caching** with ETag support for Trakt API
+- **Background refresh** via WP-Cron (every 5 minutes)
+- **Admin status dashboard** with metrics, cache tools, and API tests
 
-### Verbesserungen
-- Robustere Sanitization der Einstellungen und AJAX-Parameter
-- Optimierte Hash-basierte DOM-Updates ohne Flackern
-- Adaptive Polling-Intervalle mit Backoff bei Fehlern
+### Changed
+- Improved transient strategy with fallback caches
+- Robust sanitization of settings and AJAX parameters
+- Hash-based DOM updates without flicker
+- Adaptive polling intervals with backoff on errors
 
-### Sonstiges
-- Konsolidierung auf Branch `main`
-- Dokumentation aktualisiert
+---
 
 ## [1.2.5] - 2024-10-20
 
-### Features
-- **admin**: Add sanitization to all admin settings fields using `sanitize_text_field`
-- **trakt**: Add functions to fetch specific ratings for movies, shows, and episodes from Trakt
-- **trakt**: Add rewatch count tracking for movies and episodes
+### Added
+- Sanitization for all admin settings fields
+- Functions to fetch specific ratings for movies, shows, and episodes from Trakt
+- Rewatch count tracking for movies and episodes
 
-### Fixes
-- **api**: Update Trakt API URL to use HTTPS for better security
-- **core**: Fix missing ABSPATH check to prevent direct access to files
+### Fixed
+- Updated Trakt API URL to use HTTPS
+- Missing ABSPATH check to prevent direct file access
 
-### Chores
-- **css**: Improve public-facing elements styling in `nowscrobbling-public.css`
+---
 
 ## [1.2.4] - 2024-05-19
 
-### Features
-- **trakt**: Add optional attributes (`show_year`, `show_rating`, `show_rewatch`) for Trakt shortcodes
+### Added
+- Optional attributes (`show_year`, `show_rating`, `show_rewatch`) for Trakt shortcodes
 
-### Fixes
-- **formatting**: Adjust `nowscrobbling_format_output` function to eliminate white spaces
+### Fixed
+- White space issues in `nowscrobbling_format_output` function
+
+---
 
 ## [1.2.3] - 2024-05-19
 
-### Fixes
-- **trakt**: Implement accurate rewatch count tracking for `nowscr_trakt_last_movie` shortcode
+### Fixed
+- Accurate rewatch count tracking for `nowscr_trakt_last_movie` shortcode
+
+---
 
 ## [1.2.2] - 2024-05-17
 
-### Features
-- **shortcodes**: Add detailed `title` attributes for Last.fm and Trakt shortcodes
-- **formatting**: Implement `nowscrobbling_format_output` for better Trakt output formatting
-- **trakt**: Add `nowscrobbling_fetch_trakt_watched_shows` function to fetch completed shows
+### Added
+- Detailed `title` attributes for Last.fm and Trakt shortcodes
+- `nowscrobbling_format_output` for better Trakt output formatting
+- `nowscrobbling_fetch_trakt_watched_shows` function
 
-### Changes
-- **shortcodes**: Refactor Trakt shortcodes to include ratings and rewatch counts
-- **core**: Improve transient caching for API data fetching
-- **shortcodes**: Enhance `nowscr_lastfm_history_shortcode` with title attributes
+### Changed
+- Refactored Trakt shortcodes to include ratings and rewatch counts
+- Improved transient caching for API data
+- Enhanced `nowscr_lastfm_history_shortcode` with title attributes
 
-### Fixes
-- **ui**: Correct image path for Last.fm "Now Playing" GIF
+### Fixed
+- Image path for Last.fm "Now Playing" GIF
+
+---
 
 ## [1.2.1] - 2024-05-16
 
-### Fixes
-- **trakt**: Fix issue with currently playing item not displaying in `nowscr_trakt_indicator`
+### Fixed
+- Currently playing item not displaying in `nowscr_trakt_indicator`
+
+---
 
 ## [1.2.0] - 2024-05-14
 
-### Features
-- **core**: Restructure plugin to improve maintainability (split code into multiple files)
+### Added
+- Plugin restructure for better maintainability
 
-### Changes
-- **requirements**: Update version requirements to WordPress 5.0 and PHP 7.0
-- **shortcodes**: Enhance attribute handling for Last.fm shortcodes to specify period
-- **caching**: Improve caching for Last.fm and Trakt.tv APIs
-- **admin**: Improve admin settings page layout
+### Changed
+- Version requirements: WordPress 5.0, PHP 7.0
+- Enhanced attribute handling for Last.fm shortcodes
+- Improved caching for Last.fm and Trakt APIs
+- Better admin settings page layout
 
-### Fixes
-- **security**: Improve sanitization of input values in admin settings
-- **api**: Fix multiple issues with Last.fm and Trakt API fetching
+### Fixed
+- Sanitization of input values in admin settings
+- Multiple issues with Last.fm and Trakt API fetching
 
 ### Removed
-- **styles**: Remove inline styles in favor of external CSS file
+- Inline styles in favor of external CSS file
+
+---
 
 ## [1.0.5] - 2024-03-10
 
-### Features
-- **core**: Add comprehensive metadata in plugin header
-- **security**: Add explicit exit condition to prevent direct file access
-- **admin**: Add dynamic input fields for user configuration in admin settings
-- **cache**: Add cache management for Last.fm and Trakt.tv
+### Added
+- Comprehensive metadata in plugin header
+- Explicit exit condition to prevent direct file access
+- Dynamic input fields for user configuration
+- Cache management for Last.fm and Trakt.tv
 
-### Changes
-- **core**: Refactor entire plugin structure for better functionality and user experience
+### Changed
+- Complete plugin structure refactor
 
-### Fixes
-- **core**: Fix minor bugs and improve code syntax to adhere to WordPress standards
+### Fixed
+- Minor bugs and code syntax improvements

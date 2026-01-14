@@ -1,10 +1,10 @@
-# Copyright (C) 2024 Robin Will
+# Copyright (C) 2025 Robin Will
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
 "Project-Id-Version: NowScrobbling 1.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/willrobin/NowScrobbling/issues\n"
-"POT-Creation-Date: 2024-01-14 12:00+0000\n"
+"POT-Creation-Date: 2025-01-15 12:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -13,6 +13,14 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Plugin Name
+msgid "NowScrobbling"
+msgstr ""
+
+#. Plugin Description
+msgid "Display your Last.fm scrobbles and Trakt.tv activity beautifully on your WordPress site. Multiple layouts, artwork support, and smart caching."
+msgstr ""
 
 #: src/Core/Plugin.php
 msgid "NowScrobbling requires PHP %1$s or higher. You are running PHP %2$s."
@@ -40,10 +48,6 @@ msgstr ""
 
 #: src/Core/Assets.php
 msgid "Copied to clipboard!"
-msgstr ""
-
-#: src/Admin/AdminPage.php
-msgid "NowScrobbling"
 msgstr ""
 
 #: src/Admin/AdminPage.php
@@ -478,6 +482,58 @@ msgstr ""
 msgid "Log cleared successfully."
 msgstr ""
 
+#: src/Cache/CacheResult.php
+msgid "just now"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d second ago"
+msgid_plural "%d seconds ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d minute ago"
+msgid_plural "%d minutes ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d hour ago"
+msgid_plural "%d hours ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+msgid "Memory"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Cache"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Fallback"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Fresh"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Miss"
+msgstr ""
+
 #: templates/layouts/list.php
 msgid "Now"
 msgstr ""
@@ -506,4 +562,20 @@ msgstr[1] ""
 
 #: templates/layouts/list.php
 msgid "Play count"
+msgstr ""
+
+#: templates/components/nowplaying-badge.php
+msgid "Now Playing"
+msgstr ""
+
+#: templates/components/artwork.php
+msgid "Album artwork"
+msgstr ""
+
+#: templates/components/artwork.php
+msgid "Movie poster"
+msgstr ""
+
+#: templates/components/artwork.php
+msgid "TV show poster"
 msgstr ""
