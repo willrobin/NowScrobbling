@@ -67,7 +67,10 @@ final class IndicatorShortcode extends AbstractShortcode
 
         $text = $this->truncate("$artist - $name", (int) $atts['max_length']);
 
-        return $this->renderer->bubble($text, $url, $this->isNowPlaying($data));
+        /* translators: %1$s: artist name, %2$s: track name */
+        $title = sprintf(__('%1$s – %2$s on Last.fm', 'nowscrobbling'), $artist, $name);
+
+        return $this->renderer->bubble($text, $url, $this->isNowPlaying($data), $title);
     }
 
     protected function getEmptyMessage(): string

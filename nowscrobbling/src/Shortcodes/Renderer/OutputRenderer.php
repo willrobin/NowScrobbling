@@ -52,32 +52,49 @@ final class OutputRenderer
     }
 
     /**
-     * Render a link element
+     * Render a link element (respects ns_show_links setting)
      *
-     * @param string $url   URL to link to
-     * @param string $text  Link text
-     * @param string $class Optional CSS class
+     * @param string      $url   URL to link to
+     * @param string      $text  Link text
+     * @param string      $class Optional CSS class
+     * @param string|null $title Optional title attribute for hover text
      */
-    public function link(string $url, string $text, string $class = ''): string
+    public function link(string $url, string $text, string $class = '', ?string $title = null): string
     {
+        // Check if links are disabled
+        if (!$this->shouldShowLinks()) {
+            return esc_html($text);
+        }
+
         $classAttr = $class !== '' ? sprintf(' class="%s"', esc_attr($class)) : '';
+        $titleAttr = $title !== null ? sprintf(' title="%s"', esc_attr($title)) : '';
 
         return sprintf(
-            '<a href="%s"%s target="_blank" rel="noopener noreferrer">%s</a>',
+            '<a href="%s"%s%s target="_blank" rel="noopener noreferrer">%s</a>',
             esc_url($url),
             $classAttr,
+            $titleAttr,
             esc_html($text)
         );
     }
 
     /**
-     * Render a bubble-style element
+     * Check if links should be shown
+     */
+    private function shouldShowLinks(): bool
+    {
+        return (bool) get_option('ns_show_links', true);
+    }
+
+    /**
+     * Render a bubble-style element (respects ns_show_links setting)
      *
      * @param string      $text       Text content
      * @param string|null $url        Optional URL
      * @param bool        $nowPlaying Whether this is now-playing
+     * @param string|null $title      Optional title attribute for hover text
      */
-    public function bubble(string $text, ?string $url = null, bool $nowPlaying = false): string
+    public function bubble(string $text, ?string $url = null, bool $nowPlaying = false, ?string $title = null): string
     {
         $class = 'bubble';
         if ($nowPlaying) {
@@ -86,11 +103,14 @@ final class OutputRenderer
 
         $content = esc_html($text);
 
-        if ($url !== null && $url !== '') {
+        if ($url !== null && $url !== '' && $this->shouldShowLinks()) {
+            $titleAttr = $title !== null ? sprintf(' title="%s"', esc_attr($title)) : '';
+
             return sprintf(
-                '<a href="%s" class="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                '<a href="%s" class="%s"%s target="_blank" rel="noopener noreferrer">%s</a>',
                 esc_url($url),
                 esc_attr($class),
+                $titleAttr,
                 $content
             );
         }
