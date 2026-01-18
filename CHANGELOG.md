@@ -1,5 +1,126 @@
 # Changelog
 
+## [2.0.0] - 2026-01-18
+
+### Complete Rewrite - Modern Architecture
+
+Version 2.0 is a complete rewrite of NowScrobbling with a modern PHP 8.2+ architecture, maintaining full backward compatibility with v1.3 settings.
+
+### Added
+
+**Architecture**
+- PSR-4 autoloading with Composer
+- Lightweight dependency injection container
+- Plugin singleton orchestrator with proper hook registration
+- Strict types throughout the codebase
+
+**Multi-Layer Caching System**
+- `InMemoryLayer`: Per-request static cache
+- `TransientLayer`: WordPress transients as primary cache
+- `FallbackLayer`: 7-day emergency cache for API failures
+- `ETagLayer`: HTTP conditional requests for bandwidth savings
+- `ThunderingHerdLock`: Prevents simultaneous API requests
+- Stale-while-revalidate pattern for seamless updates
+
+**Environment Detection**
+- `CloudflareAdapter`: Automatic header optimization
+- `LiteSpeedAdapter`: Cache purge integration
+- `NginxAdapter`: FastCGI cache support
+- `ObjectCacheAdapter`: Redis/Memcached/APCu detection
+- `DefaultAdapter`: Fallback for standard environments
+
+**API Clients**
+- `ApiClientInterface`: Contract for all API clients
+- `AbstractApiClient`: Base class with ETag, rate limiting, retry logic
+- `LastFmClient`: Full Last.fm API implementation
+- `TraktClient`: Full Trakt.tv API implementation
+- `RateLimiter`: Prevents API abuse
+- `ApiResponse`: DTO for successful responses
+
+**Shortcodes (Unified Architecture)**
+- `AbstractShortcode`: Base class eliminating 40% code duplication
+- `OutputRenderer`: SSR wrapper with hash-based DOM diffing
+- `HashGenerator`: Content hashing for efficient updates
+- `TopListShortcode`: Unified artists/albums/tracks handling
+
+**Admin Interface**
+- Tab-based settings page (Credentials, Caching, Display, Diagnostics)
+- `SettingsManager`: Orchestrates all settings
+- `TabInterface`: Contract for admin tabs
+- API connection testing
+- Cache statistics and metrics
+- Debug log viewer
+
+**REST API (Replaces admin-ajax.php)**
+- `GET /wp-json/nowscrobbling/v1/render/{shortcode}` - Public shortcode rendering
+- `GET /wp-json/nowscrobbling/v1/status` - Admin plugin status
+- `POST /wp-json/nowscrobbling/v1/cache/clear` - Admin cache management
+
+**Security**
+- `NonceManager`: Granular nonces per endpoint
+- `Sanitizer`: Centralized sanitization with correct order (unslash → sanitize)
+- Capability checks for all admin actions
+- HTTPS enforcement for API calls
+- Input validation (text, int, bool, email, url, json, html)
+- Output escaping at render time
+
+**JavaScript (Vanilla ES6+)**
+- `NowScrobbling` class with IntersectionObserver
+- Hash-based DOM diffing (no flicker)
+- Exponential backoff polling
+- Page Visibility API integration
+- Smooth height transitions
+- No jQuery dependency
+
+**Migration System**
+- Automatic v1.3 → v2.0 option migration (24 mappings)
+- Legacy transient cleanup
+- Legacy cron hook removal
+- Migration rollback capability
+- Migration status tracking
+
+**Testing**
+- PHPUnit test framework
+- Unit tests for cache layers
+- Unit tests for security components
+- WordPress stub functions
+- Test bootstrap configuration
+
+**Documentation**
+- ARCHITECTURE.md: Comprehensive architecture guide
+- CONTRIBUTING.md: Contribution guidelines
+- Updated CLAUDE.md for v2.0
+
+### Changed
+- Minimum PHP version: 7.0 → 8.2
+- Minimum WordPress version: 5.0 → 6.0
+- Plugin structure: Monolithic → Modular (`/src/` directory)
+- Hook registration: Constructor → `plugins_loaded` action
+- HTTP API: admin-ajax.php → REST API
+- JavaScript: jQuery → Vanilla ES6+
+- Caching: Single layer → Multi-layer with fallback
+
+### Removed
+- Legacy includes/ directory (v1.3 code, kept for reference during migration)
+- jQuery dependency
+- Direct `wp_remote_get` calls (replaced by API clients)
+- Single nonce for all AJAX endpoints
+
+### Security
+- Fixed: Nonces now granular per endpoint (was: single nonce for all)
+- Fixed: Sanitization order corrected (was: sometimes sanitize before unslash)
+- Added: Rate limiting for API requests
+- Added: Capability checks for all admin actions
+- Added: HTTPS enforcement for external API calls
+
+### Migration Notes
+- All v1.3 settings are automatically migrated on activation
+- No manual configuration required
+- Rollback available in Diagnostics tab if needed
+- Legacy cron hooks are automatically removed
+
+---
+
 ## [1.3.2] - 2025-01-14
 
 ### Added

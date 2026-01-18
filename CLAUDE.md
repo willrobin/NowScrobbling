@@ -1,80 +1,157 @@
-# CLAUDE.md - NowScrobbling
+# CLAUDE.md - NowScrobbling v2.0
 
 ## Project Overview
 
-NowScrobbling is a WordPress plugin that displays Last.fm and Trakt.tv activity via shortcodes. It uses server-side rendering (SSR) with progressive AJAX hydration and aggressive but polite caching.
+NowScrobbling is a WordPress plugin that displays Last.fm and Trakt.tv activity via shortcodes. Version 2.0 uses a modern PHP 8.2+ architecture with PSR-4 autoloading, dependency injection, and multi-layer caching.
 
-**Current Version**: 1.3.1.3
-**Target Version**: 1.4.0
+**Current Version**: 2.0.0
+**PHP Requirement**: 8.2+
+**WordPress Requirement**: 6.0+
 
 ## Quick Reference
 
 ### Essential Commands
 
 ```bash
-# No build step required - pure PHP/JS/CSS
-# Just edit files and refresh browser
+# Install dependencies
+cd nowscrobbling
+composer install
+
+# Run tests
+composer test
+# or
+./vendor/bin/phpunit
+
+# Check code style
+composer phpcs
+# or
+./vendor/bin/phpcs
 
 # Testing in WordPress
-1. Symlink or copy to wp-content/plugins/NowScrobbling
+1. Symlink or copy nowscrobbling/ to wp-content/plugins/
 2. Activate plugin in WordPress admin
-3. Add API credentials in Settings > NowScrobbling
+3. Add API credentials in Settings > NowScrobbling > Credentials
 4. Use shortcodes on any page/post
 ```
 
-### File Structure
+### File Structure (v2.0)
 
 ```
 nowscrobbling/
-├── nowscrobbling.php          # Bootstrap ONLY (constants, hooks, includes)
-├── includes/
-│   ├── api-functions.php      # API calls, caching, metrics, logging
-│   ├── shortcodes.php         # All 11 shortcode definitions
-│   ├── admin-settings.php     # Settings page, diagnostics, cache tools
-│   └── ajax.php               # AJAX endpoints (public + admin)
-├── public/
-│   ├── css/                   # Public styles
-│   ├── js/ajax-load.js        # Client polling + refresh
-│   └── images/nowplaying.gif  # Animation for now-playing
-└── languages/                 # i18n (text domain: nowscrobbling)
+├── nowscrobbling.php          # Bootstrap ONLY (constants, autoloader, hooks)
+├── composer.json              # PSR-4 autoloading configuration
+├── src/
+│   ├── Plugin.php             # Main orchestrator (singleton)
+│   ├── Container.php          # Lightweight DI container
+│   ├── Core/
+│   │   ├── Bootstrap.php      # Hook registration
+│   │   ├── Activator.php      # Installation, defaults, migration
+│   │   ├── Deactivator.php    # Cleanup on deactivation
+│   │   ├── Migrator.php       # v1.3 → v2.0 option migration
+│   │   └── Assets.php         # Conditional asset loading
+│   ├── Cache/
+│   │   ├── CacheManager.php   # Cache orchestrator
+│   │   ├── Layers/            # InMemory, Transient, Fallback, ETag
+│   │   ├── Environment/       # Cloudflare, LiteSpeed, Nginx adapters
+│   │   └── Lock/              # ThunderingHerdLock
+│   ├── Api/
+│   │   ├── AbstractApiClient.php  # Base with ETag, rate limiting
+│   │   ├── LastFmClient.php   # Last.fm API
+│   │   ├── TraktClient.php    # Trakt.tv API
+│   │   └── RateLimiter.php    # API rate limiting
+│   ├── Shortcodes/
+│   │   ├── ShortcodeManager.php   # Registration & routing
+│   │   ├── AbstractShortcode.php  # Base class (DRY)
+│   │   ├── LastFm/            # Last.fm shortcodes
+│   │   └── Trakt/             # Trakt shortcodes
+│   ├── Admin/
+│   │   ├── AdminController.php    # Menu & registration
+│   │   ├── SettingsManager.php    # Settings orchestration
+│   │   ├── Tabs/              # Credentials, Caching, Display, Diagnostics
+│   │   └── Views/             # Admin page templates
+│   ├── Rest/
+│   │   └── RestController.php # REST API endpoints
+│   ├── Security/
+│   │   ├── NonceManager.php   # Granular nonces per endpoint
+│   │   └── Sanitizer.php      # Centralized sanitization
+│   └── Support/
+│       ├── Logger.php         # Debug logging
+│       ├── Metrics.php        # Performance metrics
+│       └── TextTruncator.php  # Multibyte truncation
+├── assets/
+│   ├── css/                   # Public and admin styles
+│   ├── js/                    # Vanilla ES6+ JavaScript
+│   └── images/                # Plugin images
+├── tests/
+│   ├── Unit/                  # PHPUnit tests
+│   └── bootstrap.php          # Test configuration
+└── uninstall.php              # Complete cleanup on uninstall
 ```
 
-### Key Functions
+### Key Classes
 
-| Function | Purpose | File |
-|----------|---------|------|
-| `nowscrobbling_get_or_set_transient()` | Central caching with fallback | api-functions.php |
-| `nowscrobbling_fetch_api_data()` | HTTP calls with ETag, metrics | api-functions.php |
-| `nowscrobbling_wrap_output()` | SSR wrapper with hash for AJAX | shortcodes.php |
-| `nowscrobbling_should_cooldown()` | Rate-limit protection | api-functions.php |
+| Class | Purpose | Location |
+|-------|---------|----------|
+| `Plugin` | Main orchestrator, singleton | src/Plugin.php |
+| `Container` | Dependency injection | src/Container.php |
+| `CacheManager` | Multi-layer cache orchestration | src/Cache/CacheManager.php |
+| `AbstractApiClient` | API base with ETag, rate limiting | src/Api/AbstractApiClient.php |
+| `AbstractShortcode` | Shortcode base class | src/Shortcodes/AbstractShortcode.php |
+| `NonceManager` | Granular security tokens | src/Security/NonceManager.php |
+| `Sanitizer` | Centralized input sanitization | src/Security/Sanitizer.php |
+| `Migrator` | v1.3 → v2.0 migration | src/Core/Migrator.php |
 
 ## Code Conventions
 
 ### Naming
 
-- **PHP functions**: `nowscrobbling_` prefix (e.g., `nowscrobbling_fetch_lastfm_data`)
-- **Shortcodes only**: `nowscr_` prefix (e.g., `nowscr_lastfm_indicator`)
-- **Options**: `ns_` prefix for new options (e.g., `ns_debug_enabled`)
+- **Namespace**: `NowScrobbling\` (e.g., `NowScrobbling\Cache\CacheManager`)
+- **Shortcodes**: `nowscr_` prefix (e.g., `nowscr_lastfm_indicator`)
+- **Options**: `ns_` prefix (e.g., `ns_debug_enabled`, `ns_lastfm_api_key`)
 - **Text domain**: `nowscrobbling` for all i18n strings
+- **REST namespace**: `nowscrobbling/v1`
 
 ### Shortcode Pattern (Mandatory)
 
 Every shortcode MUST:
-1. Return HTML wrapped by `nowscrobbling_wrap_output($slug, $html, $hash, $nowplaying)`
-2. Compute hash via `nowscrobbling_make_hash()` for client-side diffing
-3. Be registered in `nowscrobbling_list_shortcodes()` (bootstrap)
-4. Be whitelisted in `ajax.php` `$allowed_shortcodes` array
+1. Extend `AbstractShortcode`
+2. Implement `getTag()`, `getSlug()`, `renderContent()`
+3. Use `OutputRenderer` for HTML wrapping with hash
+4. Be registered via `ShortcodeManager`
+
+```php
+class MyShortcode extends AbstractShortcode
+{
+    public function getTag(): string
+    {
+        return 'nowscr_my_shortcode';
+    }
+
+    public function getSlug(): string
+    {
+        return 'my-shortcode';
+    }
+
+    protected function renderContent(array $atts): string
+    {
+        // Fetch data, render HTML
+        return '<div>...</div>';
+    }
+}
+```
 
 ### Caching Rules
 
-**ALWAYS use the helpers. Never call `wp_remote_get` or raw transient functions directly.**
+**ALWAYS use the cache manager. Never call `wp_remote_get` or raw transient functions directly.**
 
 ```php
-// Correct: Use the caching wrapper
-$data = nowscrobbling_get_or_set_transient($key, $callback, $ttl);
+// Correct: Use API client (handles caching, ETag, rate limiting)
+$client = $container->make(LastFmClient::class);
+$response = $client->getRecentTracks($user);
 
-// Correct: Use the fetch helper (handles ETag, metrics, cooldowns)
-$response = nowscrobbling_fetch_api_data($url, $headers, $args, $cache_key);
+// Correct: Use cache manager for custom data
+$cacheManager = $container->make(CacheManager::class);
+$data = $cacheManager->get($key, $callback, $ttl);
 
 // Wrong: Direct HTTP call
 $response = wp_remote_get($url); // DON'T DO THIS
@@ -82,58 +159,66 @@ $response = wp_remote_get($url); // DON'T DO THIS
 
 ### Security Checklist
 
-- [ ] Sanitize input: `sanitize_text_field(wp_unslash($_POST['key']))`
-- [ ] Validate booleans: `wp_validate_boolean()`
-- [ ] Verify nonces: `wp_verify_nonce()` for all AJAX/forms
-- [ ] Check capabilities: `current_user_can('manage_options')` for admin actions
+- [ ] Use `Sanitizer` class for all input sanitization
+- [ ] Sanitize with correct order: `unslash → sanitize → validate`
+- [ ] Use `NonceManager` for endpoint-specific nonces
+- [ ] Check capabilities: `current_user_can('manage_options')` for admin
 - [ ] Escape output: `esc_html()`, `esc_attr()`, `esc_url()` at render time
 
-## v1.4 Development Goals
+### Hook Registration
+
+**NEVER register hooks in constructors.** Use the Bootstrap pattern:
+
+```php
+// Correct: Bootstrap registers hooks
+add_action('init', [$shortcodeManager, 'register']);
+
+// Wrong: Constructor hook registration
+public function __construct()
+{
+    add_action('init', [$this, 'register']); // DON'T
+}
+```
+
+## v2.0 Architecture
 
 ### Core Philosophy
 
 > **"Old data is better than error messages"**
 
-A visitor seeing week-old data is better than seeing an error. The plugin should gracefully degrade through multiple cache layers before ever showing an error.
+A visitor seeing week-old data is better than seeing an error. The plugin gracefully degrades through multiple cache layers before ever showing an error.
 
-### Cache Strategy
+### Cache Strategy (4 Layers)
 
 ```
 Request Flow:
-1. In-Memory Cache (per-request)
-2. Primary Transient (1-15 min, configurable)
+1. In-Memory Cache (per-request, static)
+2. Primary Transient (1-60 min, configurable)
 3. Fallback Transient (7 days, never overwritten with errors)
-4. HTML Persistence (12 hours, last successful render)
-5. ETag Cache (24 hours, bandwidth savings)
+4. ETag Cache (conditional requests, bandwidth savings)
+
++ Stale-While-Revalidate (serve old, fetch new in background)
++ Thundering Herd Lock (prevent simultaneous API calls)
 ```
 
-### Priority Areas
+### Dependency Injection
 
-1. **Security**: Granular nonces, proper sanitization order
-2. **Code Quality**: Eliminate ~40% shortcode duplication
-3. **Caching**: Stale-while-revalidate, longer fallbacks
-4. **Admin UX**: Tab-based settings, paginated logs
-5. **Migration**: Automatic option migration from v1.3
+```php
+// Get service from container
+$client = NowScrobbling\Plugin::getInstance()->make(LastFmClient::class);
 
-## Current Issues / Tech Debt
+// Or via injected container
+public function __construct(private readonly Container $container) {}
+$client = $this->container->make(LastFmClient::class);
+```
 
-### Known Problems
+### REST API Endpoints
 
-- [ ] All AJAX endpoints share same nonce (should be granular)
-- [ ] `wp_unslash()` sometimes called after `sanitize_*()` (wrong order)
-- [ ] Fallback data not validated for age (could be months old)
-- [ ] ~40% code duplication in Top Artists/Albums/Tracks shortcodes
-- [ ] `nowscrobbling_get_or_set_transient()` is ~800 lines (too complex)
-- [ ] Admin page has 20+ settings without tabs
-- [ ] Log viewer loads all 200 entries at once (no pagination)
-
-### Do NOT
-
-- Add new external dependencies (keep it lean)
-- Bypass the caching helpers
-- Echo output directly in bootstrap file
-- Add heavy frontend frameworks
-- Commit credentials or `.env` files
+| Endpoint | Method | Auth | Purpose |
+|----------|--------|------|---------|
+| `/render/{shortcode}` | GET | Public | Render shortcode HTML |
+| `/status` | GET | Admin | Plugin status & metrics |
+| `/cache/clear` | POST | Admin | Clear all caches |
 
 ## Testing
 
@@ -142,43 +227,56 @@ Request Flow:
 ```markdown
 1. Admin Settings
    - [ ] Page loads without PHP errors
+   - [ ] Tabs switch correctly
    - [ ] Settings save correctly
    - [ ] API Test button works
    - [ ] Cache clear works
 
 2. Shortcodes
    - [ ] SSR renders immediately (no JS required)
-   - [ ] AJAX refresh updates content
+   - [ ] REST API refresh updates content
    - [ ] No layout shift on hydration
    - [ ] Fallback shown when API fails
 
 3. Caching
    - [ ] Cache hit logged in debug
    - [ ] ETag 304 responses handled
-   - [ ] Cooldown activates after errors
    - [ ] Fallback data survives cache clear
+   - [ ] Thundering herd lock active
+
+4. Migration (from v1.3)
+   - [ ] Options migrated correctly
+   - [ ] Legacy crons removed
+   - [ ] Legacy transients cleaned
 ```
 
-### Debug Mode
+### Automated Tests
 
-Enable debug logging in Settings > NowScrobbling > Debug section.
-Logs appear in the admin panel and track:
-- API requests/responses
-- Cache hits/misses
-- ETag matches
-- Cooldown activations
-- Fallback usage
+```bash
+# Run all tests
+composer test
+
+# Run specific test file
+./vendor/bin/phpunit tests/Unit/Cache/InMemoryLayerTest.php
+
+# Run with coverage
+./vendor/bin/phpunit --coverage-html coverage/
+```
 
 ## Release Process
 
 1. Update version in `nowscrobbling.php`:
    - Plugin header `Version:`
    - Constant `NOWSCROBBLING_VERSION`
-2. Update `README.md` version
-3. Update `CHANGELOG.md` with changes
-4. Test all shortcodes manually
-5. Commit with message: `chore: bump version to X.Y.Z`
-6. Push to Forgejo remote
+2. Update `src/Plugin.php` constant `VERSION`
+3. Update `README.md` version
+4. Update `CHANGELOG.md` with changes
+5. Run all tests: `composer test`
+6. Check code style: `composer phpcs`
+7. Test all shortcodes manually
+8. Commit with message: `chore: bump version to X.Y.Z`
+9. Create git tag: `git tag vX.Y.Z`
+10. Push to remote: `git push && git push --tags`
 
 ## API Reference
 
@@ -200,15 +298,30 @@ Logs appear in the admin panel and track:
 ## Useful Shortcuts
 
 ```php
-// Get configured cache duration
-$minutes = nowscrobbling_cache_minutes('lastfm'); // or 'trakt'
+// Get plugin instance
+$plugin = NowScrobbling\Plugin::getInstance();
+
+// Check if debug enabled
+if ($plugin->isDebug()) { /* ... */ }
+
+// Get service
+$cache = $plugin->make(CacheManager::class);
 
 // Log with debug check
-nowscrobbling_log('Message here');
+NowScrobbling\Support\Logger::log('Message here');
 
-// Update metrics
-nowscrobbling_metrics_update('lastfm', 'cache_hits');
-
-// Check if in cooldown
-if (nowscrobbling_should_cooldown('trakt')) { /* skip API call */ }
+// Sanitize input
+$clean = NowScrobbling\Security\Sanitizer::text($input);
+$email = NowScrobbling\Security\Sanitizer::email($input);
+$json = NowScrobbling\Security\Sanitizer::json($input);
 ```
+
+## Do NOT
+
+- Add new external dependencies (keep it lean)
+- Bypass the caching system
+- Register hooks in constructors
+- Use jQuery (vanilla JS only)
+- Commit `vendor/` directory
+- Skip nonce verification
+- Echo output in shortcodes (always return)

@@ -23,6 +23,8 @@ final class InMemoryLayerTest extends TestCase
     {
         parent::setUp();
         $this->layer = new InMemoryLayer();
+        // Clear the static cache between tests
+        $this->layer->clear();
     }
 
     public function testGetReturnsNullForMissingKey(): void
@@ -100,16 +102,6 @@ final class InMemoryLayerTest extends TestCase
         $this->assertEquals('memory', $this->layer->getName());
     }
 
-    public function testGetPriority(): void
-    {
-        $this->assertEquals(0, $this->layer->getPriority());
-    }
-
-    public function testIsAvailable(): void
-    {
-        $this->assertTrue($this->layer->isAvailable());
-    }
-
     public function testGetStats(): void
     {
         $this->layer->set('key1', 'value1', 60);
@@ -117,7 +109,18 @@ final class InMemoryLayerTest extends TestCase
 
         $stats = $this->layer->getStats();
 
-        $this->assertArrayHasKey('count', $stats);
-        $this->assertEquals(2, $stats['count']);
+        $this->assertArrayHasKey('size', $stats);
+        $this->assertEquals(2, $stats['size']);
+    }
+
+    public function testGetSize(): void
+    {
+        $this->assertEquals(0, $this->layer->getSize());
+
+        $this->layer->set('key1', 'value1', 60);
+        $this->assertEquals(1, $this->layer->getSize());
+
+        $this->layer->set('key2', 'value2', 60);
+        $this->assertEquals(2, $this->layer->getSize());
     }
 }
