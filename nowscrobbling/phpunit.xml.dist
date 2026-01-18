@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    beStrictAboutOutputDuringTests="true"
+    beStrictAboutTestsThatDoNotTestAnything="true"
+    failOnRisky="true"
+    failOnWarning="true"
+    cacheDirectory=".phpunit.cache"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage>
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+        <exclude>
+            <directory>src/Admin/Views</directory>
+        </exclude>
+    </coverage>
+
+    <php>
+        <const name="ABSPATH" value="/tmp/wordpress/"/>
+        <const name="NOWSCROBBLING_PATH" value="./"/>
+        <const name="NOWSCROBBLING_URL" value="https://example.com/wp-content/plugins/nowscrobbling/"/>
+        <const name="NOWSCROBBLING_FILE" value="nowscrobbling.php"/>
+        <const name="NOWSCROBBLING_BASENAME" value="nowscrobbling/nowscrobbling.php"/>
+        <const name="NOWSCROBBLING_VERSION" value="2.0.0"/>
+    </php>
+</phpunit>

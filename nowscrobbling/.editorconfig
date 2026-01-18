@@ -1,0 +1,62 @@
+# EditorConfig - https://editorconfig.org
+# NowScrobbling WordPress Plugin
+
+root = true
+
+# Default for all files
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# PHP files
+[*.php]
+indent_size = 4
+
+# JavaScript files
+[*.js]
+indent_size = 4
+
+# CSS files
+[*.css]
+indent_size = 4
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_size = 2
+
+# XML files (including phpunit.xml, phpcs.xml)
+[*.xml]
+indent_size = 4
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# Composer files
+[composer.json]
+indent_size = 4
+
+# Package files
+[package.json]
+indent_size = 2
+
+# Shell scripts
+[*.sh]
+indent_style = tab
+indent_size = 4
+
+# Makefiles require tabs
+[Makefile]
+indent_style = tab
+
+# Git files
+[.git*]
+indent_style = tab
