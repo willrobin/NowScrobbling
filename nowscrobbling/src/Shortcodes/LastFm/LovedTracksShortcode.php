@@ -71,8 +71,12 @@ final class LovedTracksShortcode extends AbstractShortcode
             $url = $track['url'] ?? '';
 
             $text = $this->truncate("$artist - $name", $maxLength);
+
+            /* translators: %1$s: artist name, %2$s: track name */
+            $title = sprintf(__('%1$s – %2$s on Last.fm', 'nowscrobbling'), $artist, $name);
+
             $items[] = $url !== ''
-                ? $this->renderer->link($url, $text)
+                ? $this->renderer->link($url, $text, '', $title)
                 : esc_html($text);
         }
 

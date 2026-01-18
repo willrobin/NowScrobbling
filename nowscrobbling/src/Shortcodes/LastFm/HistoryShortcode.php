@@ -76,7 +76,11 @@ final class HistoryShortcode extends AbstractShortcode
             $url = $track['url'] ?? '';
 
             $text = $this->truncate("$artist - $name", $maxLength);
-            $items[] = $this->renderer->link($url, $text);
+
+            /* translators: %1$s: artist name, %2$s: track name */
+            $title = sprintf(__('%1$s – %2$s on Last.fm', 'nowscrobbling'), $artist, $name);
+
+            $items[] = $this->renderer->link($url, $text, '', $title);
         }
 
         return $this->renderer->list($items);

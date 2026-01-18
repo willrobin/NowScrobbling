@@ -41,13 +41,7 @@ if (!defined('ABSPATH')) {
         $settings->renderActiveTab();
         ?>
 
-        <?php
-        // Only show submit button for tabs that have settings
-        $activeTabId = $settings->getActiveTabId();
-        if ($activeTabId !== 'diagnostics') {
-            submit_button();
-        }
-        ?>
+        <?php submit_button(); ?>
     </form>
 
     <div class="ns-admin-footer">

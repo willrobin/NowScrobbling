@@ -87,9 +87,10 @@ final class TopListShortcode extends AbstractShortcode
         foreach (array_slice($items, 0, (int) $atts['limit']) as $item) {
             $text = $this->formatItem($item, $maxLength);
             $url = $item['url'] ?? '';
+            $title = $this->formatTitle($item);
 
             $formatted[] = $url !== ''
-                ? $this->renderer->link($url, $text)
+                ? $this->renderer->link($url, $text, '', $title)
                 : esc_html($text);
         }
 
@@ -107,6 +108,27 @@ final class TopListShortcode extends AbstractShortcode
             'tracks' => $this->truncate(
                 ($item['artist']['name'] ?? '') . ' - ' . ($item['name'] ?? ''),
                 $maxLength
+            ),
+            default => $item['name'] ?? '',
+        };
+    }
+
+    private function formatTitle(array $item): string
+    {
+        return match ($this->type) {
+            /* translators: %s: artist name */
+            'artists' => sprintf(__('%s on Last.fm', 'nowscrobbling'), $item['name'] ?? ''),
+            /* translators: %1$s: artist name, %2$s: album name */
+            'albums' => sprintf(
+                __('%1$s – %2$s on Last.fm', 'nowscrobbling'),
+                $item['artist']['name'] ?? '',
+                $item['name'] ?? ''
+            ),
+            /* translators: %1$s: artist name, %2$s: track name */
+            'tracks' => sprintf(
+                __('%1$s – %2$s on Last.fm', 'nowscrobbling'),
+                $item['artist']['name'] ?? '',
+                $item['name'] ?? ''
             ),
             default => $item['name'] ?? '',
         };
