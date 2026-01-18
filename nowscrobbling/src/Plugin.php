@@ -12,6 +12,7 @@ use NowScrobbling\Shortcodes\ShortcodeManager;
 use NowScrobbling\Rest\RestController;
 use NowScrobbling\Security\NonceManager;
 use NowScrobbling\Admin\AdminController;
+use NowScrobbling\Support\Logger;
 use RuntimeException;
 
 /**
@@ -95,6 +96,9 @@ final class Plugin
         if (!$this->meetsRequirements()) {
             return;
         }
+
+        // Initialize logger hooks
+        Logger::register();
 
         // Register all service bindings
         $this->registerBindings();

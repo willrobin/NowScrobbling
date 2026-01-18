@@ -43,7 +43,7 @@ final class DisplayTab implements TabInterface
             self::SECTION,
             __('Display Options', 'nowscrobbling'),
             fn() => $this->renderSectionDescription(),
-            'nowscrobbling_display'
+            'nowscrobbling'
         );
 
         // Max text length
@@ -60,7 +60,7 @@ final class DisplayTab implements TabInterface
                 'description' => __('Maximum characters for track/movie titles (20-200).', 'nowscrobbling'),
                 'suffix' => __('characters', 'nowscrobbling'),
             ]),
-            'nowscrobbling_display',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -84,7 +84,7 @@ final class DisplayTab implements TabInterface
             ], [
                 'description' => __('Default time period for top artists/albums/tracks.', 'nowscrobbling'),
             ]),
-            'nowscrobbling_display',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -102,7 +102,7 @@ final class DisplayTab implements TabInterface
                 'description' => __('Default number of items to display (1-20).', 'nowscrobbling'),
                 'suffix' => __('items', 'nowscrobbling'),
             ]),
-            'nowscrobbling_display',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -123,7 +123,7 @@ final class DisplayTab implements TabInterface
             ], [
                 'description' => __('How to display timestamps.', 'nowscrobbling'),
             ]),
-            'nowscrobbling_display',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -143,7 +143,7 @@ final class DisplayTab implements TabInterface
             ], [
                 'description' => __('How indicator shortcodes are displayed. Can be overridden per shortcode with style="inline" or style="bubble".', 'nowscrobbling'),
             ]),
-            'nowscrobbling_display',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -160,7 +160,7 @@ final class DisplayTab implements TabInterface
             fn() => $this->renderCheckbox('ns_show_links', [
                 'label' => __('Link track/movie names to Last.fm/Trakt.tv', 'nowscrobbling'),
             ]),
-            'nowscrobbling_display',
+            'nowscrobbling',
             self::SECTION
         );
     }
@@ -171,7 +171,7 @@ final class DisplayTab implements TabInterface
         <div class="ns-tab-content" id="ns-tab-display">
             <table class="form-table" role="presentation">
                 <tbody>
-                    <?php do_settings_fields('nowscrobbling_display', self::SECTION); ?>
+                    <?php do_settings_fields('nowscrobbling', self::SECTION); ?>
                 </tbody>
             </table>
 

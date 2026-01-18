@@ -7,6 +7,7 @@ namespace NowScrobbling\Admin\Tabs;
 use NowScrobbling\Plugin;
 use NowScrobbling\Cache\CacheManager;
 use NowScrobbling\Cache\Environment\EnvironmentDetector;
+use NowScrobbling\Support\Logger;
 
 /**
  * Diagnostics Tab
@@ -45,7 +46,7 @@ final class DiagnosticsTab implements TabInterface
             self::SECTION,
             __('Debug Settings', 'nowscrobbling'),
             fn() => $this->renderSectionDescription(),
-            'nowscrobbling_diagnostics'
+            'nowscrobbling'
         );
 
         // Debug mode
@@ -62,7 +63,7 @@ final class DiagnosticsTab implements TabInterface
                 'label' => __('Enable debug logging', 'nowscrobbling'),
                 'description' => __('Logs API requests, cache operations, and errors.', 'nowscrobbling'),
             ]),
-            'nowscrobbling_diagnostics',
+            'nowscrobbling',
             self::SECTION
         );
     }
@@ -84,7 +85,7 @@ final class DiagnosticsTab implements TabInterface
         <div class="ns-tab-content" id="ns-tab-diagnostics">
             <table class="form-table" role="presentation">
                 <tbody>
-                    <?php do_settings_fields('nowscrobbling_diagnostics', self::SECTION); ?>
+                    <?php do_settings_fields('nowscrobbling', self::SECTION); ?>
                 </tbody>
             </table>
 
@@ -211,6 +212,61 @@ final class DiagnosticsTab implements TabInterface
                     </tr>
                 </tbody>
             </table>
+
+            <?php if (Logger::isEnabled()): ?>
+            <h3><?php esc_html_e('Debug Log', 'nowscrobbling'); ?></h3>
+            <p class="description">
+                <?php
+                printf(
+                    /* translators: %s: log file size */
+                    esc_html__('Log file size: %s', 'nowscrobbling'),
+                    esc_html(Logger::getLogSize())
+                );
+                ?>
+                <button type="button" class="button button-small ns-clear-log" style="margin-left: 10px;">
+                    <?php esc_html_e('Clear Log', 'nowscrobbling'); ?>
+                </button>
+                <button type="button" class="button button-small ns-refresh-log" style="margin-left: 5px;">
+                    <?php esc_html_e('Refresh', 'nowscrobbling'); ?>
+                </button>
+            </p>
+            <div class="ns-log-viewer">
+                <pre id="ns-debug-log"><?php
+                    $entries = Logger::getRecentEntries(50);
+                    if (empty($entries)) {
+                        esc_html_e('No log entries yet. Enable debug mode and interact with the plugin to generate logs.', 'nowscrobbling');
+                    } else {
+                        foreach ($entries as $entry) {
+                            echo esc_html($entry);
+                        }
+                    }
+                ?></pre>
+            </div>
+            <style>
+                .ns-log-viewer {
+                    background: #1e1e1e;
+                    border: 1px solid #3c3c3c;
+                    border-radius: 4px;
+                    max-height: 400px;
+                    overflow: auto;
+                    margin-top: 10px;
+                }
+                .ns-log-viewer pre {
+                    color: #d4d4d4;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 12px;
+                    line-height: 1.5;
+                    margin: 0;
+                    padding: 15px;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                }
+            </style>
+            <?php else: ?>
+            <p class="description" style="margin-top: 20px;">
+                <em><?php esc_html_e('Enable debug mode above to view the debug log.', 'nowscrobbling'); ?></em>
+            </p>
+            <?php endif; ?>
         </div>
         <?php
     }
