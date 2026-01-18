@@ -102,7 +102,7 @@ final class ContainerTest extends TestCase
     public function testMakeThrowsExceptionForUnknownService(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No binding found');
+        $this->expectExceptionMessage('No binding registered for');
 
         $this->container->make('unknown.service');
     }
