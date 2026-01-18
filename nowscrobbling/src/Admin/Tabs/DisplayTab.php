@@ -127,6 +127,26 @@ final class DisplayTab implements TabInterface
             self::SECTION
         );
 
+        // Display style
+        register_setting('nowscrobbling', 'ns_display_style', [
+            'type' => 'string',
+            'sanitize_callback' => fn($v) => in_array($v, ['inline', 'bubble'], true) ? $v : 'inline',
+            'default' => 'inline',
+        ]);
+
+        add_settings_field(
+            'ns_display_style',
+            __('Display Style', 'nowscrobbling'),
+            fn() => $this->renderSelectField('ns_display_style', [
+                'inline' => __('Inline (like normal text)', 'nowscrobbling'),
+                'bubble' => __('Bubble (highlighted with border)', 'nowscrobbling'),
+            ], [
+                'description' => __('How indicator shortcodes are displayed. Can be overridden per shortcode with style="inline" or style="bubble".', 'nowscrobbling'),
+            ]),
+            'nowscrobbling_display',
+            self::SECTION
+        );
+
         // Show links
         register_setting('nowscrobbling', 'ns_show_links', [
             'type' => 'boolean',
@@ -181,6 +201,7 @@ final class DisplayTab implements TabInterface
                     <li><code>limit="5"</code> - <?php esc_html_e('Number of items', 'nowscrobbling'); ?></li>
                     <li><code>period="7day"</code> - <?php esc_html_e('Time period (7day, 1month, 3month, 6month, 12month, overall)', 'nowscrobbling'); ?></li>
                     <li><code>max_length="45"</code> - <?php esc_html_e('Max text length', 'nowscrobbling'); ?></li>
+                    <li><code>style="inline|bubble"</code> - <?php esc_html_e('Display style (overrides global setting)', 'nowscrobbling'); ?></li>
                 </ul>
             </div>
         </div>

@@ -120,6 +120,7 @@ abstract class AbstractShortcode
     {
         return [
             'max_length' => 45,
+            'style' => '', // Empty = use global setting
         ];
     }
 

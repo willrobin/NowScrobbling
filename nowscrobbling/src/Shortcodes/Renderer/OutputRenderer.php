@@ -87,6 +87,74 @@ final class OutputRenderer
     }
 
     /**
+     * Render an indicator element using the configured style
+     *
+     * @param string      $text       Text content
+     * @param string|null $url        Optional URL
+     * @param bool        $nowPlaying Whether this is now-playing
+     * @param string|null $title      Optional title attribute for hover text
+     * @param string|null $style      Style override ('inline' or 'bubble', null = use setting)
+     */
+    public function indicator(
+        string $text,
+        ?string $url = null,
+        bool $nowPlaying = false,
+        ?string $title = null,
+        ?string $style = null
+    ): string {
+        $activeStyle = $style ?? $this->getDisplayStyle();
+
+        if ($activeStyle === 'bubble') {
+            return $this->bubble($text, $url, $nowPlaying, $title);
+        }
+
+        return $this->inline($text, $url, $nowPlaying, $title);
+    }
+
+    /**
+     * Get the configured display style
+     */
+    private function getDisplayStyle(): string
+    {
+        $style = get_option('ns_display_style', 'inline');
+
+        return in_array($style, ['inline', 'bubble'], true) ? $style : 'inline';
+    }
+
+    /**
+     * Render an inline-style element (like normal text/links)
+     *
+     * @param string      $text       Text content
+     * @param string|null $url        Optional URL
+     * @param bool        $nowPlaying Whether this is now-playing
+     * @param string|null $title      Optional title attribute for hover text
+     */
+    public function inline(string $text, ?string $url = null, bool $nowPlaying = false, ?string $title = null): string
+    {
+        $content = esc_html($text);
+
+        // Add now-playing indicator
+        if ($nowPlaying) {
+            $content = '<span class="ns-inline-nowplaying">' . $content . '</span>';
+        }
+
+        if ($url !== null && $url !== '' && $this->shouldShowLinks()) {
+            $titleAttr = $title !== null ? sprintf(' title="%s"', esc_attr($title)) : '';
+            $class = $nowPlaying ? 'ns-inline-link ns-inline-nowplaying' : 'ns-inline-link';
+
+            return sprintf(
+                '<a href="%s" class="%s"%s target="_blank" rel="noopener noreferrer">%s</a>',
+                esc_url($url),
+                esc_attr($class),
+                $titleAttr,
+                esc_html($text)
+            );
+        }
+
+        return $content;
+    }
+
+    /**
      * Render a bubble-style element (respects ns_show_links setting)
      *
      * @param string      $text       Text content

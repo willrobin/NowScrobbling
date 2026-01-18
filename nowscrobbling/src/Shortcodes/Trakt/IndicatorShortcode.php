@@ -66,7 +66,10 @@ final class IndicatorShortcode extends AbstractShortcode
 
         $text = $this->formatItem($item, $maxLength);
 
-        return $this->renderer->bubble($text, null, $isWatching);
+        // Use style attribute if set, otherwise indicator() uses global setting
+        $style = !empty($atts['style']) ? $atts['style'] : null;
+
+        return $this->renderer->indicator($text, null, $isWatching, null, $style);
     }
 
     private function formatItem(array $item, int $maxLength): string
