@@ -160,7 +160,7 @@ final class TransientLayer implements CacheLayerInterface
      */
     public function hasObjectCache(): bool
     {
-        return wp_using_ext_object_cache();
+        return (bool) wp_using_ext_object_cache();
     }
 
     /**
