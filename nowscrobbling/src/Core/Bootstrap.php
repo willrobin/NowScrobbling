@@ -6,6 +6,7 @@ namespace NowScrobbling\Core;
 
 use NowScrobbling\Container;
 use NowScrobbling\Plugin;
+use NowScrobbling\Ajax\AjaxHandler;
 
 /**
  * Bootstrap class for hook registration
@@ -68,6 +69,18 @@ final class Bootstrap
 
         // Register REST API routes
         add_action('rest_api_init', $this->registerRestRoutes(...));
+
+        // Register AJAX handlers (fallback for when REST API is disabled)
+        $this->registerAjaxHandlers();
+    }
+
+    /**
+     * Register AJAX handlers
+     */
+    private function registerAjaxHandlers(): void
+    {
+        $ajaxHandler = new AjaxHandler($this->container);
+        $ajaxHandler->register();
     }
 
     /**
@@ -215,6 +228,7 @@ final class Bootstrap
 
         return [
             'restUrl'  => rest_url('nowscrobbling/v1'),
+            'ajaxUrl'  => admin_url('admin-ajax.php'),
             'nonces'   => [
                 'render'  => wp_create_nonce('ns_render'),
                 'refresh' => wp_create_nonce('ns_refresh'),
@@ -408,6 +422,7 @@ final class Bootstrap
 
             wp_localize_script('nowscrobbling-admin', 'nowscrobblingAdmin', [
                 'restUrl' => rest_url('nowscrobbling/v1'),
+                'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonces'  => [
                     'cacheClear' => wp_create_nonce('ns_cache_clear'),
                     'apiTest'    => wp_create_nonce('ns_api_test'),

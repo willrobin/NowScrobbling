@@ -6,6 +6,9 @@
  * - Cache clearing
  * - UI interactions
  *
+ * Uses admin-ajax.php as primary method (works when REST API is disabled)
+ * Falls back to REST API if available
+ *
  * @package NowScrobbling
  */
 
@@ -19,7 +22,12 @@
         /**
          * @type {string}
          */
-        #apiBase;
+        #ajaxUrl;
+
+        /**
+         * @type {string}
+         */
+        #restUrl;
 
         /**
          * @type {Object<string, string>}
@@ -30,7 +38,8 @@
          * @param {Object} config
          */
         constructor(config) {
-            this.#apiBase = config.restUrl;
+            this.#ajaxUrl = config.ajaxUrl;
+            this.#restUrl = config.restUrl;
             this.#nonces = config.nonces || {};
         }
 
@@ -62,7 +71,7 @@
                         const result = await this.#testConnection(service);
 
                         resultSpan.textContent = result.message;
-                        resultSpan.classList.add(result.success ? 'ns-success' : 'ns-error');
+                        resultSpan.classList.add(result.status === 'success' ? 'ns-success' : 'ns-error');
 
                     } catch (error) {
                         resultSpan.textContent = error.message || 'Connection failed';
@@ -87,18 +96,24 @@
 
                     button.disabled = true;
                     button.classList.add('is-loading');
-                    resultSpan.textContent = '';
-                    resultSpan.className = 'ns-cache-result';
+                    if (resultSpan) {
+                        resultSpan.textContent = '';
+                        resultSpan.className = 'ns-cache-result';
+                    }
 
                     try {
                         const result = await this.#clearCache(type);
 
-                        resultSpan.textContent = result.message;
-                        resultSpan.classList.add(result.success ? 'ns-success' : 'ns-error');
+                        if (resultSpan) {
+                            resultSpan.textContent = result.message;
+                            resultSpan.classList.add(result.success ? 'ns-success' : 'ns-error');
+                        }
 
                     } catch (error) {
-                        resultSpan.textContent = error.message || 'Failed to clear cache';
-                        resultSpan.classList.add('ns-error');
+                        if (resultSpan) {
+                            resultSpan.textContent = error.message || 'Failed to clear cache';
+                            resultSpan.classList.add('ns-error');
+                        }
                     } finally {
                         button.disabled = false;
                         button.classList.remove('is-loading');
@@ -144,52 +159,58 @@
         }
 
         /**
-         * Test API connection
+         * Test API connection using admin-ajax.php
          * @param {string} service
          * @returns {Promise<Object>}
          */
         async #testConnection(service) {
-            const response = await fetch(`${this.#apiBase}/test/${service}`, {
+            const formData = new FormData();
+            formData.append('action', 'nowscrobbling_test_api');
+            formData.append('service', service);
+            formData.append('nonce', this.#nonces.apiTest || '');
+
+            const response = await fetch(this.#ajaxUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': this.#nonces.apiTest || ''
-                },
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                body: formData
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP ${response.status}`);
+            if (!data.success) {
+                throw new Error(data.data?.message || 'Connection failed');
             }
 
-            return data;
+            return data.data;
         }
 
         /**
-         * Clear cache
+         * Clear cache using admin-ajax.php
          * @param {string} type
          * @returns {Promise<Object>}
          */
         async #clearCache(type) {
-            const response = await fetch(`${this.#apiBase}/cache/clear`, {
+            const formData = new FormData();
+            formData.append('action', 'nowscrobbling_clear_cache');
+            formData.append('type', type || 'all');
+            formData.append('nonce', this.#nonces.cacheClear || '');
+
+            const response = await fetch(this.#ajaxUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': this.#nonces.cacheClear || ''
-                },
                 credentials: 'same-origin',
-                body: JSON.stringify({ type })
+                body: formData
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP ${response.status}`);
+            if (!data.success) {
+                throw new Error(data.data?.message || 'Failed to clear cache');
             }
 
-            return data;
+            return {
+                success: true,
+                message: data.data?.message || 'Cache cleared'
+            };
         }
     }
 
