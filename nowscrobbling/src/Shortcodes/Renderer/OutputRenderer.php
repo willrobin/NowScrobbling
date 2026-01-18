@@ -1,0 +1,125 @@
+<?php
+
+declare(strict_types=1);
+
+namespace NowScrobbling\Shortcodes\Renderer;
+
+/**
+ * Output Renderer
+ *
+ * Wraps shortcode output with data attributes for AJAX refresh.
+ *
+ * @package NowScrobbling\Shortcodes\Renderer
+ */
+final class OutputRenderer
+{
+    /**
+     * Wrap HTML content with shortcode container
+     *
+     * @param string               $shortcode  Shortcode tag name
+     * @param string               $html       HTML content
+     * @param string               $hash       Content hash for diffing
+     * @param bool                 $nowPlaying Whether this is a now-playing state
+     * @param array<string, mixed> $attrs      Shortcode attributes
+     * @param string               $tag        HTML tag to use
+     */
+    public function wrap(
+        string $shortcode,
+        string $html,
+        string $hash,
+        bool $nowPlaying = false,
+        array $attrs = [],
+        string $tag = 'span'
+    ): string {
+        $classes = ['nowscrobbling', 'ns-' . $this->slugify($shortcode)];
+
+        if ($nowPlaying) {
+            $classes[] = 'ns-nowplaying';
+        }
+
+        $attrsJson = wp_json_encode($attrs);
+
+        return sprintf(
+            '<%1$s class="%2$s" data-nowscrobbling-shortcode="%3$s" data-ns-hash="%4$s"%5$s data-ns-attrs="%6$s">%7$s</%1$s>',
+            esc_attr($tag),
+            esc_attr(implode(' ', $classes)),
+            esc_attr($shortcode),
+            esc_attr($hash),
+            $nowPlaying ? ' data-ns-nowplaying="1"' : '',
+            esc_attr($attrsJson ?: '{}'),
+            $html
+        );
+    }
+
+    /**
+     * Render a link element
+     *
+     * @param string $url   URL to link to
+     * @param string $text  Link text
+     * @param string $class Optional CSS class
+     */
+    public function link(string $url, string $text, string $class = ''): string
+    {
+        $classAttr = $class !== '' ? sprintf(' class="%s"', esc_attr($class)) : '';
+
+        return sprintf(
+            '<a href="%s"%s target="_blank" rel="noopener noreferrer">%s</a>',
+            esc_url($url),
+            $classAttr,
+            esc_html($text)
+        );
+    }
+
+    /**
+     * Render a bubble-style element
+     *
+     * @param string      $text       Text content
+     * @param string|null $url        Optional URL
+     * @param bool        $nowPlaying Whether this is now-playing
+     */
+    public function bubble(string $text, ?string $url = null, bool $nowPlaying = false): string
+    {
+        $class = 'bubble';
+        if ($nowPlaying) {
+            $class .= ' bubble-nowplaying';
+        }
+
+        $content = esc_html($text);
+
+        if ($url !== null && $url !== '') {
+            return sprintf(
+                '<a href="%s" class="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                esc_url($url),
+                esc_attr($class),
+                $content
+            );
+        }
+
+        return sprintf(
+            '<span class="%s">%s</span>',
+            esc_attr($class),
+            $content
+        );
+    }
+
+    /**
+     * Render a list of items
+     *
+     * @param array<string> $items List items
+     * @param string        $separator Item separator
+     */
+    public function list(array $items, string $separator = ', '): string
+    {
+        return implode($separator, $items);
+    }
+
+    /**
+     * Convert shortcode name to CSS slug
+     *
+     * @param string $shortcode Shortcode tag name
+     */
+    private function slugify(string $shortcode): string
+    {
+        return str_replace('_', '-', $shortcode);
+    }
+}
