@@ -5,6 +5,13 @@ declare(strict_types=1);
 namespace NowScrobbling;
 
 use NowScrobbling\Core\Bootstrap;
+use NowScrobbling\Cache\CacheManager;
+use NowScrobbling\Api\LastFmClient;
+use NowScrobbling\Api\TraktClient;
+use NowScrobbling\Shortcodes\ShortcodeManager;
+use NowScrobbling\Rest\RestController;
+use NowScrobbling\Security\NonceManager;
+use NowScrobbling\Admin\AdminController;
 use RuntimeException;
 
 /**
@@ -176,11 +183,59 @@ final class Plugin
      */
     private function registerBindings(): void
     {
+        // Cache system (no dependencies)
+        $this->container->singleton(
+            CacheManager::class,
+            fn(): CacheManager => new CacheManager()
+        );
+
+        // Security services
+        $this->container->singleton(
+            NonceManager::class,
+            fn(): NonceManager => new NonceManager()
+        );
+
+        // API clients (depend on CacheManager)
+        $this->container->singleton(
+            LastFmClient::class,
+            fn(Container $c): LastFmClient => new LastFmClient(
+                $c->make(CacheManager::class)
+            )
+        );
+
+        $this->container->singleton(
+            TraktClient::class,
+            fn(Container $c): TraktClient => new TraktClient(
+                $c->make(CacheManager::class)
+            )
+        );
+
+        // Shortcode system
+        $this->container->singleton(
+            ShortcodeManager::class,
+            fn(Container $c): ShortcodeManager => new ShortcodeManager($c)
+        );
+
+        // REST API
+        $this->container->singleton(
+            RestController::class,
+            fn(Container $c): RestController => new RestController($c)
+        );
+
+        // Admin interface
+        $this->container->singleton(
+            AdminController::class,
+            fn(Container $c): AdminController => new AdminController($c)
+        );
+
         // Core services
         $this->container->singleton(
             Bootstrap::class,
             fn(Container $c): Bootstrap => new Bootstrap($c)
         );
+
+        // Register hook listeners for action-based initialization
+        $this->registerHookListeners();
 
         /**
          * Fires after core bindings are registered
@@ -190,6 +245,34 @@ final class Plugin
          * @param Container $container The DI container
          */
         do_action('nowscrobbling_register_bindings', $this->container);
+    }
+
+    /**
+     * Register hook listeners for deferred initialization
+     *
+     * These respond to the action hooks fired by Bootstrap.
+     */
+    private function registerHookListeners(): void
+    {
+        // Register shortcodes when init fires
+        add_action('nowscrobbling_register_shortcodes', function (Container $c): void {
+            $c->make(ShortcodeManager::class)->register();
+        });
+
+        // Register REST routes when rest_api_init fires
+        add_action('nowscrobbling_register_rest_routes', function (Container $c): void {
+            $c->make(RestController::class)->register();
+        });
+
+        // Register admin menu
+        add_action('nowscrobbling_register_admin_menu', function (Container $c): void {
+            $c->make(AdminController::class)->registerMenu();
+        });
+
+        // Register settings
+        add_action('nowscrobbling_register_settings', function (Container $c): void {
+            $c->make(AdminController::class)->registerSettings();
+        });
     }
 
     /**
