@@ -40,6 +40,11 @@ final class FallbackLayer implements CacheLayerInterface
     private const MAX_TTL = 2592000;
 
     /**
+     * Wrapper to distinguish between "not found" and "cached false"
+     */
+    private const WRAPPER_KEY = '__ns_fb_wrapped';
+
+    /**
      * @inheritDoc
      */
     public function get(string $key): mixed
@@ -47,8 +52,14 @@ final class FallbackLayer implements CacheLayerInterface
         $prefixedKey = $this->prefixKey($key);
         $value = get_transient($prefixedKey);
 
+        // Transient doesn't exist
         if ($value === false) {
             return null;
+        }
+
+        // Unwrap if it's a wrapped value (to handle false values correctly)
+        if (is_array($value) && isset($value[self::WRAPPER_KEY])) {
+            return $value['value'];
         }
 
         return $value;
@@ -69,6 +80,11 @@ final class FallbackLayer implements CacheLayerInterface
         $prefixedKey = $this->prefixKey($key);
         $metaKey = $this->metaKey($key);
 
+        // Wrap false values to distinguish from "not found"
+        if ($value === false) {
+            $value = [self::WRAPPER_KEY => true, 'value' => $value];
+        }
+
         // Always use the default TTL for fallback storage
         $result = set_transient($prefixedKey, $value, self::DEFAULT_TTL);
 
@@ -86,7 +102,15 @@ final class FallbackLayer implements CacheLayerInterface
     public function has(string $key): bool
     {
         $prefixedKey = $this->prefixKey($key);
-        return get_transient($prefixedKey) !== false;
+        $value = get_transient($prefixedKey);
+
+        // Transient doesn't exist
+        if ($value === false) {
+            return false;
+        }
+
+        // If we got here, either we have a real value or a wrapped value
+        return true;
     }
 
     /**
@@ -176,6 +200,11 @@ final class FallbackLayer implements CacheLayerInterface
     private function isErrorResponse(mixed $value): bool
     {
         if (!is_array($value)) {
+            return false;
+        }
+
+        // Ignore wrapper arrays - they're not errors
+        if (isset($value[self::WRAPPER_KEY])) {
             return false;
         }
 

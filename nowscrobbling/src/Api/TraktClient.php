@@ -20,11 +20,6 @@ use NowScrobbling\Cache\CacheManager;
 final class TraktClient extends AbstractApiClient
 {
     /**
-     * Service identifier
-     */
-    protected readonly string $service;
-
-    /**
      * Trakt API version
      */
     private const API_VERSION = '2';
@@ -34,7 +29,6 @@ final class TraktClient extends AbstractApiClient
      */
     public function __construct(CacheManager $cache)
     {
-        $this->service = 'trakt';
         parent::__construct($cache);
     }
 

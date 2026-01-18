@@ -23,11 +23,6 @@ use WP_Error;
 abstract class AbstractApiClient implements ApiClientInterface
 {
     /**
-     * The service identifier
-     */
-    protected readonly string $service;
-
-    /**
      * Cache manager
      */
     protected readonly CacheManager $cache;

@@ -29,6 +29,11 @@ final class TransientLayer implements CacheLayerInterface
     private const META_PREFIX = 'ns_meta_';
 
     /**
+     * Wrapper to distinguish between "not found" and "cached false"
+     */
+    private const WRAPPER_KEY = '__ns_wrapped';
+
+    /**
      * @inheritDoc
      */
     public function get(string $key): mixed
@@ -36,8 +41,14 @@ final class TransientLayer implements CacheLayerInterface
         $prefixedKey = $this->prefixKey($key);
         $value = get_transient($prefixedKey);
 
+        // Transient doesn't exist
         if ($value === false) {
             return null;
+        }
+
+        // Unwrap if it's a wrapped value (to handle false/null values correctly)
+        if (is_array($value) && isset($value[self::WRAPPER_KEY])) {
+            return $value['value'];
         }
 
         return $value;
@@ -50,6 +61,12 @@ final class TransientLayer implements CacheLayerInterface
     {
         $prefixedKey = $this->prefixKey($key);
         $metaKey = $this->metaKey($key);
+
+        // Wrap values that could be confused with "not found" (false)
+        // Also wrap null to preserve it correctly
+        if ($value === false || $value === null) {
+            $value = [self::WRAPPER_KEY => true, 'value' => $value];
+        }
 
         // Store the value
         $result = set_transient($prefixedKey, $value, $ttl);
@@ -68,7 +85,15 @@ final class TransientLayer implements CacheLayerInterface
     public function has(string $key): bool
     {
         $prefixedKey = $this->prefixKey($key);
-        return get_transient($prefixedKey) !== false;
+        $value = get_transient($prefixedKey);
+
+        // Transient doesn't exist
+        if ($value === false) {
+            return false;
+        }
+
+        // If we got here, either we have a real value or a wrapped value
+        return true;
     }
 
     /**
