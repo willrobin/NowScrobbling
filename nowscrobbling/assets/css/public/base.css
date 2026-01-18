@@ -1,0 +1,197 @@
+/**
+ * NowScrobbling Base Styles
+ *
+ * Core styles that apply to all layouts.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* Base container */
+.nowscrobbling {
+    font-family: var(--ns-font-family);
+    font-size: var(--ns-font-size-base);
+    line-height: var(--ns-line-height);
+    color: var(--ns-color-text);
+}
+
+/* Links */
+.nowscrobbling a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--ns-transition-fast);
+}
+
+.nowscrobbling a:hover {
+    color: var(--ns-color-primary);
+}
+
+.nowscrobbling--lastfm a:hover {
+    color: var(--ns-color-lastfm);
+}
+
+.nowscrobbling--trakt a:hover {
+    color: var(--ns-color-trakt);
+}
+
+/* Empty state */
+.nowscrobbling--empty {
+    color: var(--ns-color-text-muted);
+    font-style: italic;
+}
+
+/* Now Playing indicator */
+.nowscrobbling--now-playing {
+    /* Can be styled differently if needed */
+}
+
+/* Pulse animation for now playing */
+.ns-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--ns-color-nowplaying);
+    border-radius: var(--ns-radius-full);
+    animation: ns-pulse 2s infinite;
+}
+
+@keyframes ns-pulse {
+    0% {
+        box-shadow: 0 0 0 0 var(--ns-color-nowplaying-pulse);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 213, 115, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 213, 115, 0);
+    }
+}
+
+/* Badge base */
+.ns-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ns-space-xs);
+    padding: var(--ns-space-xs) var(--ns-space-sm);
+    font-size: var(--ns-font-size-xs);
+    font-weight: var(--ns-font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: var(--ns-radius-sm);
+    background: var(--ns-color-bg-tertiary);
+    color: var(--ns-color-text-muted);
+}
+
+.ns-badge--nowplaying {
+    background: var(--ns-color-nowplaying);
+    color: #fff;
+}
+
+/* Rating stars */
+.ns-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.ns-rating__star {
+    color: var(--ns-color-rating-empty);
+    font-size: var(--ns-font-size-sm);
+}
+
+.ns-rating__star--filled {
+    color: var(--ns-color-rating);
+}
+
+.ns-rating__star--half {
+    color: var(--ns-color-rating);
+    position: relative;
+}
+
+.ns-rating--compact {
+    gap: var(--ns-space-xs);
+}
+
+.ns-rating__value {
+    font-size: var(--ns-font-size-xs);
+    font-weight: var(--ns-font-weight-medium);
+    color: var(--ns-color-text-muted);
+}
+
+/* Separator */
+.ns-separator {
+    color: var(--ns-color-text-light);
+    margin: 0 var(--ns-space-xs);
+}
+
+/* Artwork base */
+.ns-artwork {
+    position: relative;
+    overflow: hidden;
+    background: var(--ns-color-bg-secondary);
+    border-radius: var(--ns-radius-md);
+}
+
+.ns-artwork__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ns-artwork__fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: var(--ns-font-size-xl);
+    color: var(--ns-color-text-light);
+    background: var(--ns-color-bg-tertiary);
+}
+
+.ns-artwork--small {
+    width: var(--ns-image-small);
+    height: var(--ns-image-small);
+}
+
+.ns-artwork--medium {
+    width: var(--ns-image-medium);
+    height: var(--ns-image-medium);
+}
+
+.ns-artwork--large {
+    width: var(--ns-image-large);
+    height: var(--ns-image-large);
+}
+
+/* Screen reader only */
+.screen-reader-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Attribution */
+.ns-attributions {
+    font-size: var(--ns-font-size-sm);
+    color: var(--ns-color-text-muted);
+    margin-top: var(--ns-space-lg);
+    padding-top: var(--ns-space-md);
+    border-top: 1px solid var(--ns-color-border-light);
+}
+
+.ns-attributions__text {
+    margin: 0 0 var(--ns-space-sm);
+}
+
+.ns-attributions__disclaimers {
+    font-size: var(--ns-font-size-xs);
+    color: var(--ns-color-text-light);
+    margin: 0;
+}

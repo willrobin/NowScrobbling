@@ -1,0 +1,229 @@
+/**
+ * Badges Component Styles
+ *
+ * Styles for status badges, tags, and labels.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* ==========================================================================
+   BASE BADGE
+   ========================================================================== */
+
+.ns-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ns-spacing-xs);
+    padding: 2px 8px;
+    border-radius: var(--ns-radius-full);
+    font-size: var(--ns-font-xs);
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   BADGE VARIANTS
+   ========================================================================== */
+
+/* Default */
+.ns-badge--default {
+    background-color: var(--ns-bg-secondary);
+    color: var(--ns-text-secondary);
+}
+
+/* Primary / Accent */
+.ns-badge--primary {
+    background-color: var(--ns-accent);
+    color: var(--ns-text-on-accent);
+}
+
+/* Success */
+.ns-badge--success {
+    background-color: var(--ns-success);
+    color: #fff;
+}
+
+/* Warning */
+.ns-badge--warning {
+    background-color: var(--ns-warning);
+    color: #000;
+}
+
+/* Error */
+.ns-badge--error {
+    background-color: var(--ns-error);
+    color: #fff;
+}
+
+/* ==========================================================================
+   NOW PLAYING BADGE
+   ========================================================================== */
+
+.ns-badge--nowplaying {
+    background-color: var(--ns-accent);
+    color: var(--ns-text-on-accent);
+    animation: ns-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ns-badge-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* ==========================================================================
+   PULSE INDICATOR
+   ========================================================================== */
+
+.ns-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: currentColor;
+    animation: ns-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ns-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ==========================================================================
+   SERVICE BADGES
+   ========================================================================== */
+
+.ns-badge--lastfm {
+    background-color: #d51007;
+    color: #fff;
+}
+
+.ns-badge--trakt {
+    background-color: #ed1c24;
+    color: #fff;
+}
+
+.ns-badge--spotify {
+    background-color: #1db954;
+    color: #fff;
+}
+
+/* ==========================================================================
+   MEDIA TYPE BADGES
+   ========================================================================== */
+
+.ns-badge--movie {
+    background-color: #6366f1;
+    color: #fff;
+}
+
+.ns-badge--show {
+    background-color: #8b5cf6;
+    color: #fff;
+}
+
+.ns-badge--episode {
+    background-color: #a855f7;
+    color: #fff;
+}
+
+.ns-badge--music {
+    background-color: #ec4899;
+    color: #fff;
+}
+
+/* ==========================================================================
+   REWATCH / REPLAY BADGE
+   ========================================================================== */
+
+.ns-badge--rewatch {
+    background-color: var(--ns-bg-tertiary);
+    color: var(--ns-text-secondary);
+}
+
+.ns-badge--rewatch::before {
+    content: '\21BA'; /* Rotation arrow */
+    margin-right: 2px;
+}
+
+/* ==========================================================================
+   PERIOD BADGES (for top charts)
+   ========================================================================== */
+
+.ns-badge--period {
+    background-color: var(--ns-bg-secondary);
+    color: var(--ns-text-muted);
+    font-weight: 500;
+}
+
+/* ==========================================================================
+   COUNT BADGE
+   ========================================================================== */
+
+.ns-badge--count {
+    min-width: 20px;
+    padding: 2px 6px;
+    text-align: center;
+    background-color: var(--ns-bg-secondary);
+    color: var(--ns-text-secondary);
+}
+
+/* ==========================================================================
+   BADGE SIZES
+   ========================================================================== */
+
+.ns-badge--small {
+    padding: 1px 6px;
+    font-size: 10px;
+}
+
+.ns-badge--large {
+    padding: 4px 12px;
+    font-size: var(--ns-font-sm);
+}
+
+/* ==========================================================================
+   BADGE GROUP
+   ========================================================================== */
+
+.ns-badge-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--ns-spacing-xs);
+}
+
+/* ==========================================================================
+   OUTLINE BADGES
+   ========================================================================== */
+
+.ns-badge--outline {
+    background-color: transparent;
+    border: 1px solid currentColor;
+}
+
+.ns-badge--outline.ns-badge--primary {
+    color: var(--ns-accent);
+}
+
+.ns-badge--outline.ns-badge--success {
+    color: var(--ns-success);
+}
+
+.ns-badge--outline.ns-badge--error {
+    color: var(--ns-error);
+}

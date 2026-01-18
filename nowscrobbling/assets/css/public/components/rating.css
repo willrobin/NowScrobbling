@@ -1,0 +1,150 @@
+/**
+ * Rating Component Styles
+ *
+ * Styles for star ratings and numeric ratings.
+ *
+ * @package NowScrobbling
+ * @since   1.4.0
+ */
+
+/* ==========================================================================
+   RATING CONTAINER
+   ========================================================================== */
+
+.ns-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ns-spacing-xs);
+}
+
+/* ==========================================================================
+   STAR RATING
+   ========================================================================== */
+
+.ns-rating__stars {
+    display: inline-flex;
+    gap: 1px;
+}
+
+.ns-rating__star {
+    color: var(--ns-text-muted);
+    font-size: 0.875em;
+    line-height: 1;
+}
+
+.ns-rating__star--filled {
+    color: var(--ns-rating-color, #f5c518);
+}
+
+.ns-rating__star--half {
+    position: relative;
+}
+
+.ns-rating__star--half::before {
+    content: '\2605';
+    position: absolute;
+    left: 0;
+    overflow: hidden;
+    width: 50%;
+    color: var(--ns-rating-color, #f5c518);
+}
+
+/* ==========================================================================
+   NUMERIC RATING
+   ========================================================================== */
+
+.ns-rating__value {
+    font-weight: 600;
+    font-size: var(--ns-font-sm);
+    color: var(--ns-text-primary);
+}
+
+.ns-rating__max {
+    color: var(--ns-text-muted);
+    font-weight: 400;
+}
+
+/* ==========================================================================
+   COMPACT RATING (for list view)
+   ========================================================================== */
+
+.ns-rating--compact {
+    font-size: var(--ns-font-xs);
+}
+
+.ns-rating--compact .ns-rating__stars {
+    gap: 0;
+}
+
+.ns-rating--compact .ns-rating__star {
+    font-size: 0.75em;
+}
+
+/* ==========================================================================
+   RATING SIZES
+   ========================================================================== */
+
+.ns-rating--small .ns-rating__star {
+    font-size: 0.75em;
+}
+
+.ns-rating--large .ns-rating__star {
+    font-size: 1.25em;
+}
+
+/* ==========================================================================
+   RATING COLORS (service-specific)
+   ========================================================================== */
+
+/* IMDb style */
+.ns-rating--imdb {
+    --ns-rating-color: #f5c518;
+}
+
+/* Letterboxd style */
+.ns-rating--letterboxd {
+    --ns-rating-color: #00e054;
+}
+
+/* Trakt style */
+.ns-rating--trakt {
+    --ns-rating-color: #ed1c24;
+}
+
+/* Heart rating (for loved tracks) */
+.ns-rating--heart .ns-rating__star--filled {
+    color: var(--ns-accent);
+}
+
+/* ==========================================================================
+   RATING BADGE (for cards)
+   ========================================================================== */
+
+.ns-rating-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ns-spacing-xs);
+    padding: 4px 8px;
+    border-radius: var(--ns-radius-sm);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: var(--ns-font-xs);
+    font-weight: 600;
+}
+
+.ns-rating-badge__icon {
+    color: var(--ns-rating-color, #f5c518);
+}
+
+/* ==========================================================================
+   INTERACTIVE RATING (for future use)
+   ========================================================================== */
+
+.ns-rating--interactive .ns-rating__star {
+    cursor: pointer;
+    transition: transform var(--ns-transition-fast);
+}
+
+.ns-rating--interactive .ns-rating__star:hover {
+    transform: scale(1.2);
+}

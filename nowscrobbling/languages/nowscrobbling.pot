@@ -1,0 +1,581 @@
+# Copyright (C) 2025 Robin Will
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: NowScrobbling 1.4.0\n"
+"Report-Msgid-Bugs-To: https://github.com/willrobin/NowScrobbling/issues\n"
+"POT-Creation-Date: 2025-01-15 12:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Plugin Name
+msgid "NowScrobbling"
+msgstr ""
+
+#. Plugin Description
+msgid "Display your Last.fm scrobbles and Trakt.tv activity beautifully on your WordPress site. Multiple layouts, artwork support, and smart caching."
+msgstr ""
+
+#: src/Core/Plugin.php
+msgid "NowScrobbling requires PHP %1$s or higher. You are running PHP %2$s."
+msgstr ""
+
+#: src/Core/Plugin.php
+msgid "NowScrobbling requires WordPress %1$s or higher. You are running WordPress %2$s."
+msgstr ""
+
+#: src/Core/Plugin.php
+msgid "Every 5 Minutes"
+msgstr ""
+
+#: src/Core/Assets.php
+msgid "Are you sure you want to clear all caches?"
+msgstr ""
+
+#: src/Core/Assets.php
+msgid "Cache cleared successfully."
+msgstr ""
+
+#: src/Core/Assets.php
+msgid "An error occurred."
+msgstr ""
+
+#: src/Core/Assets.php
+msgid "Copied to clipboard!"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Overview"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Last.fm"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Trakt"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Display"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Cache"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Shortcodes"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Debug"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Provider Status"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Provider"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Status"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Actions"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Configured"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Not configured"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Test Connection"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Configure"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Quick Stats"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Providers"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Last.fm API Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Get your API key from %s"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "API Key"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Username"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Cache Duration"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "minutes"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Save Last.fm Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Trakt API Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Create an app at %s to get your Client ID."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Client ID"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "TMDb Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Optional: Get an API key from %s for movie/TV show posters."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "TMDb API Key"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Save Trakt Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Display Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Default Layout"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Inline"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Card"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Grid"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "List"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Default layout for shortcodes when not specified."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Show Artwork"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Show album covers and posters by default"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Save Display Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Cache Management"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Clear All Caches"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Polling Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Configure how often the frontend checks for updates."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Now Playing Interval"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "seconds (minimum: 5)"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Maximum Interval"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "seconds (after backoff)"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Backoff Multiplier"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Multiplier applied when no changes detected."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Save Cache Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Available Shortcodes"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Shortcode"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Description"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Copy"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Common Parameters"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Parameter"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Default"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Display layout: inline, card, grid, list"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Show artwork/poster images"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Number of items to display"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Truncate text (0 = no truncation)"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Additional CSS class"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Time period (Last.fm): 7day, 1month, 3month, 6month, 12month, overall"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Example"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Debug Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Debug Mode"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Enable debug logging"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Logs API requests and errors for troubleshooting."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Save Debug Settings"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Debug Log"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "No log entries yet."
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Clear Log"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "System Info"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Plugin Version"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "WordPress Version"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "PHP Version"
+msgstr ""
+
+#: src/Admin/AdminPage.php
+msgid "Timezone"
+msgstr ""
+
+#: src/Shortcodes/AbstractShortcode.php
+msgid "Layout"
+msgstr ""
+
+#: src/Shortcodes/AbstractShortcode.php
+msgid "Limit"
+msgstr ""
+
+#: src/Shortcodes/LastFM/IndicatorShortcode.php
+msgid "Scrobbling now"
+msgstr ""
+
+#: src/Shortcodes/LastFM/IndicatorShortcode.php
+msgid "Last heard"
+msgstr ""
+
+#: src/Shortcodes/LastFM/IndicatorShortcode.php
+msgid "No recent tracks found."
+msgstr ""
+
+#: src/Shortcodes/LastFM/IndicatorShortcode.php
+msgid "ago"
+msgstr ""
+
+#: src/Shortcodes/LastFM/HistoryShortcode.php
+msgid "No listening history found."
+msgstr ""
+
+#: src/Shortcodes/LastFM/TopArtistsShortcode.php
+msgid "No top artists found."
+msgstr ""
+
+#: src/Shortcodes/LastFM/TopAlbumsShortcode.php
+msgid "No top albums found."
+msgstr ""
+
+#: src/Shortcodes/LastFM/TopTracksShortcode.php
+msgid "No top tracks found."
+msgstr ""
+
+#: src/Shortcodes/LastFM/LovedTracksShortcode.php
+msgid "No loved tracks found."
+msgstr ""
+
+#: src/Shortcodes/Trakt/IndicatorShortcode.php
+msgid "Watching now"
+msgstr ""
+
+#: src/Shortcodes/Trakt/IndicatorShortcode.php
+msgid "Last watched"
+msgstr ""
+
+#: src/Shortcodes/Trakt/IndicatorShortcode.php
+msgid "Nothing recently watched."
+msgstr ""
+
+#: src/Shortcodes/Trakt/HistoryShortcode.php
+msgid "No watch history found."
+msgstr ""
+
+#: src/Shortcodes/Trakt/LastMovieShortcode.php
+msgid "No movies watched recently."
+msgstr ""
+
+#: src/Shortcodes/Trakt/LastShowShortcode.php
+msgid "No shows watched recently."
+msgstr ""
+
+#: src/Shortcodes/Trakt/LastEpisodeShortcode.php
+msgid "No episodes watched recently."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Security check failed."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Missing shortcode parameter."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Unknown shortcode."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Permission denied."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Unknown action."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Missing provider parameter."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Unknown provider."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Provider not configured."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Connected to %s successfully."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Connection failed."
+msgstr ""
+
+#: src/Ajax/AjaxHandler.php
+msgid "Log cleared successfully."
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "just now"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d second ago"
+msgid_plural "%d seconds ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d minute ago"
+msgid_plural "%d minutes ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d hour ago"
+msgid_plural "%d hours ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+#, php-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cache/CacheResult.php
+msgid "Memory"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Cache"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Fallback"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Fresh"
+msgstr ""
+
+#: src/Cache/CacheResult.php
+msgid "Miss"
+msgstr ""
+
+#: templates/layouts/list.php
+msgid "Now"
+msgstr ""
+
+#: templates/layouts/list.php
+msgid "Rating"
+msgstr ""
+
+#: templates/layouts/list.php
+#, php-format
+msgid "%s play"
+msgid_plural "%s plays"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/layouts/list.php
+msgid "Rewatched"
+msgstr ""
+
+#: templates/layouts/list.php
+#, php-format
+msgid "%s rewatch"
+msgid_plural "%s rewatches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/layouts/list.php
+msgid "Play count"
+msgstr ""
+
+#: templates/components/nowplaying-badge.php
+msgid "Now Playing"
+msgstr ""
+
+#: templates/components/artwork.php
+msgid "Album artwork"
+msgstr ""
+
+#: templates/components/artwork.php
+msgid "Movie poster"
+msgstr ""
+
+#: templates/components/artwork.php
+msgid "TV show poster"
+msgstr ""

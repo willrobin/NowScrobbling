@@ -1,230 +1,228 @@
-# NowScrobbling WordPress Plugin
+# NowScrobbling
 
-**Version 1.3.2** - Stabile, performante und saubere Version für Last.fm und Trakt.tv Integration
+**Your music and media activity, beautifully presented.**
 
-## Übersicht
+A modern WordPress plugin that displays your Last.fm scrobbles and Trakt.tv watch history with style. Built for performance, privacy, and perfect WordPress integration.
 
-NowScrobbling ist ein WordPress-Plugin, das Last.fm und Trakt.tv Daten per Shortcode darstellt. Die Version 1.3.x bringt erhebliche Performance-Verbesserungen, bessere Caching-Strategien und eine moderne Benutzeroberfläche.
+![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple)
+![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue)
+![License](https://img.shields.io/badge/license-GPLv2-green)
 
-## Neue Features in Version 1.3.2
+## Features
 
-### Dokumentation
-- **CLAUDE.md**: Neue Projektdokumentation für Claude Code Zusammenarbeit
-- **cursorrules**: Modernisiert und auf CLAUDE.md verweisend
-- **.gitignore**: Erweitert um IDE-Dateien, Logs und lokale Konfigurationen
+### Performance First
+- **Smart Multi-Layer Caching** - Memory, transient, and fallback caches ensure fast responses
+- **"Old data is better than errors"** - Graceful degradation when APIs are unavailable
+- **Conditional Asset Loading** - CSS/JS only load on pages that use shortcodes
+- **Efficient Polling** - Exponential backoff prevents unnecessary API calls
 
-### API-Verbesserungen
-- `nowscrobbling_log_throttled()` Funktion zur Reduzierung von Log-Spam
-- Deterministische Cache-Key-Generierung durch Deep Key Sorting
-- Optimierte HTTP-Header (gzip, connection close)
-- Reduzierter Timeout (10s -> 5s) für schnellere Fehlererkennung
+### Privacy Focused
+- **No external tracking** - Your data stays between you and the APIs you choose
+- **Minimal API calls** - Smart caching reduces external requests
+- **No cookies** - Zero cookie footprint for visitors
+- **GDPR friendly** - You control what data is displayed
 
-### Bugfixes
-- CSS margin-top für mobile Ansichten korrigiert
+### Beautiful Design
+- **4 Layout Options** - Inline, Card, Grid, and List views
+- **Dark/Light Mode** - Automatic system preference detection
+- **CSS Variables** - Easy theming with custom properties
+- **Responsive** - Looks great on all devices
 
----
+### Developer Friendly
+- **Modern PHP 8.0+** - Typed properties, enums, match expressions
+- **PSR-4 Autoloading** - Clean namespace structure
+- **Extensible** - Provider pattern for adding new services
+- **Template Overrides** - Customize output via your theme
 
-## Neue Features in Version 1.3.1.x
-### 🚀 Performance & UX
-- **Server-Side Rendering (SSR)**: Inhalte werden sofort beim Laden aus dem Cache angezeigt
-- **Intelligentes AJAX-Update**: Nur bei Änderungen im Inhalt wird der DOM ersetzt (Hash-Vergleich)
-- **Sanfte DOM-Updates**: Kein Flackern beim Aktualisieren der Inhalte
-- **Automatisches Polling**: "Now Playing"-Inhalte werden automatisch in festen Intervallen aktualisiert
-- **Konditionales Laden**: CSS/JS werden nur geladen, wenn Shortcodes auf der Seite verwendet werden
+## Requirements
 
-### 🗄️ Caching & Hintergrund-Refresh
-- **Smart Caching**: Kurze Aktualisierung für "Now Playing" (20-30s) und längere Intervalle für andere Inhalte
-- **Cronjob-Integration**: Regelmäßige Cache-Aktualisierung im Hintergrund, auch ohne Besucher
-- **ETag-Support**: Optional für Trakt-API, um Datenlast zu senken
-- **Fallback-Caching**: Bei API-Fehlern werden letzte Cache-Stände angezeigt
+- WordPress 5.0+
+- PHP 8.0+
+- Last.fm API Key (free) and/or Trakt.tv Client ID (free)
 
-### 🔒 Sicherheit & Code-Qualität
-- **Striktes Sanitizing**: Alle Parameter in Shortcodes und AJAX-Requests werden validiert
-- **Whitelist-System**: Nur erlaubte Shortcodes können per AJAX aufgerufen werden
-- **Nonce-Protection**: Sicherheits-Tokens für alle AJAX-Endpunkte
-- **Debug-Logging**: Optimiertes Logging-System (nur bei aktivierter Debug-Option)
+## Installation
 
-### 🎨 Optik & Konsistenz
-- **CSS-Variablen**: Einfache Anpassung der Optik über CSS-Variablen
-- **Moderne Animationen**: Sanfte Übergänge und visuelle Feedback-Effekte
-- **Responsive Design**: Optimiert für mobile Geräte
-- **Dark Mode Support**: Automatische Anpassung an System-Präferenzen
+1. Upload the `nowscrobbling` folder to `/wp-content/plugins/`
+2. Activate the plugin in WordPress Admin
+3. Navigate to **Settings > NowScrobbling**
+4. Enter your API credentials
+5. Use shortcodes in your content
 
-## 📋 Anforderungen
+## Configuration
 
-- WordPress 5.0 oder höher
-- PHP 7.0 oder höher
-- Last.fm API-Schlüssel (optional)
-- Trakt.tv Client ID (optional)
+### Last.fm Setup
+1. Visit [Last.fm API](https://www.last.fm/api/account/create)
+2. Create an application to get your API Key
+3. Enter your API Key and Last.fm username in the plugin settings
 
-## 🚀 Installation
+### Trakt.tv Setup
+1. Visit [Trakt.tv Apps](https://trakt.tv/oauth/applications/new)
+2. Create an application to get your Client ID
+3. Enter your Client ID and Trakt username in the plugin settings
 
-1. Lade das Plugin in den `/wp-content/plugins/nowscrobbling/` Ordner hoch
-2. Aktiviere das Plugin über das WordPress Admin-Panel
-3. Gehe zu "Einstellungen > NowScrobbling" und konfiguriere deine API-Schlüssel
-4. Verwende die verfügbaren Shortcodes in deinen Beiträgen oder Seiten
+### Optional: TMDb for Posters
+1. Visit [TMDb API](https://www.themoviedb.org/settings/api)
+2. Get an API Key for movie/TV show posters
+3. Enter it in the Trakt settings tab
 
-## ⚙️ Konfiguration
+## Shortcodes
 
-### API-Schlüssel einrichten
+### Last.fm
 
-1. **Last.fm API-Schlüssel**:
-   - Besuche [Last.fm API](https://www.last.fm/api/account/create)
-   - Erstelle eine neue API-Anwendung
-   - Kopiere den API-Schlüssel in die Plugin-Einstellungen
+| Shortcode | Description |
+|-----------|-------------|
+| `[nowscr_lastfm_indicator]` | Current scrobbling status |
+| `[nowscr_lastfm_history]` | Recent scrobbles |
+| `[nowscr_lastfm_top_artists]` | Top artists |
+| `[nowscr_lastfm_top_albums]` | Top albums |
+| `[nowscr_lastfm_top_tracks]` | Top tracks |
+| `[nowscr_lastfm_lovedtracks]` | Loved tracks |
 
-2. **Trakt.tv Client ID**:
-   - Besuche [Trakt.tv API](https://trakt.tv/oauth/applications/new)
-   - Erstelle eine neue OAuth-Anwendung
-   - Kopiere die Client ID in die Plugin-Einstellungen
+### Trakt.tv
 
-### Cache-Einstellungen
+| Shortcode | Description |
+|-----------|-------------|
+| `[nowscr_trakt_indicator]` | Current watching status |
+| `[nowscr_trakt_history]` | Watch history |
+| `[nowscr_trakt_last_movie]` | Last watched movie |
+| `[nowscr_trakt_last_show]` | Last watched show |
+| `[nowscr_trakt_last_episode]` | Last watched episode |
 
-- **Last.fm Cache-Dauer**: 1-60 Minuten (Standard: 1 Minute)
-- **Trakt Cache-Dauer**: 1-60 Minuten (Standard: 5 Minuten)
-- **Allgemeine Cache-Dauer**: 1-60 Minuten (Standard: 60 Minuten)
+### Common Parameters
 
-## 📝 Verfügbare Shortcodes
+| Parameter | Values | Default | Description |
+|-----------|--------|---------|-------------|
+| `layout` | `inline`, `card`, `grid`, `list` | `inline` | Display layout |
+| `show_image` | `true`, `false` | `false` | Show artwork/posters |
+| `limit` | `1-50` | `5` | Number of items |
+| `max_length` | `0-200` | `0` | Text truncation (0 = none) |
+| `class` | string | - | Custom CSS class |
+| `period` | `7day`, `1month`, `3month`, `6month`, `12month`, `overall` | `7day` | Time period (Last.fm) |
 
-### Last.fm Shortcodes
+### Examples
 
-#### `[nowscr_lastfm_indicator]`
-Zeigt den aktuellen Status der Last.fm Aktivität an.
+```
+[nowscr_lastfm_indicator]
 
-#### `[nowscr_lastfm_history max_length="45"]`
-Zeigt die letzten Scrobbles von Last.fm an.
-- `max_length`: Maximale Zeichenlänge (Standard: 45)
+[nowscr_lastfm_top_artists layout="grid" show_image="true" limit="6" period="12month"]
 
-#### `[nowscr_lastfm_top_artists period="7day" max_length="15"]`
-Zeigt die letzten Top-Künstler von Last.fm an.
-- `period`: Zeitraum (7day, 1month, 3month, 6month, 12month, overall)
-- `max_length`: Maximale Zeichenlänge (Standard: 15)
+[nowscr_trakt_history layout="list" show_image="true" limit="10"]
 
-#### `[nowscr_lastfm_top_albums period="7day" max_length="45"]`
-Zeigt die letzten Top-Alben von Last.fm an.
-- `period`: Zeitraum (7day, 1month, 3month, 6month, 12month, overall)
-- `max_length`: Maximale Zeichenlänge (Standard: 45)
+[nowscr_trakt_last_movie layout="card" show_image="true"]
+```
 
-#### `[nowscr_lastfm_top_tracks period="7day" max_length="45"]`
-Zeigt die letzten Top-Titel von Last.fm an.
-- `period`: Zeitraum (7day, 1month, 3month, 6month, 12month, overall)
-- `max_length`: Maximale Zeichenlänge (Standard: 45)
+## Customization
 
-#### `[nowscr_lastfm_lovedtracks max_length="45"]`
-Zeigt die letzten Lieblingslieder von Last.fm an.
-- `max_length`: Maximale Zeichenlänge (Standard: 45)
+### CSS Variables
 
-### Trakt.tv Shortcodes
-
-#### `[nowscr_trakt_indicator]`
-Zeigt den aktuellen Status der Trakt Aktivität an.
-
-#### `[nowscr_trakt_history show_year="true" show_rating="true" show_rewatch="true"]`
-Zeigt die letzten Aktivitäten von Trakt an.
-- `show_year`: Jahr anzeigen (true/false)
-- `show_rating`: Bewertung anzeigen (true/false)
-- `show_rewatch`: Rewatch-Count anzeigen (true/false)
-
-#### `[nowscr_trakt_last_movie show_year="true" show_rating="true" show_rewatch="true"]`
-Zeigt die letzten Filme von Trakt an.
-- `show_year`: Jahr anzeigen (true/false)
-- `show_rating`: Bewertung anzeigen (true/false)
-- `show_rewatch`: Rewatch-Count anzeigen (true/false)
-
-#### `[nowscr_trakt_last_show show_year="true" show_rating="true" show_rewatch="true"]`
-Zeigt die letzten Serien von Trakt an.
-- `show_year`: Jahr anzeigen (true/false)
-- `show_rating`: Bewertung anzeigen (true/false)
-- `show_rewatch`: Rewatch-Count anzeigen (true/false)
-
-#### `[nowscr_trakt_last_episode show_year="true" show_rating="true" show_rewatch="true"]`
-Zeigt die letzten Episoden von Trakt an.
-- `show_year`: Jahr anzeigen (true/false)
-- `show_rating`: Bewertung anzeigen (true/false)
-- `show_rewatch`: Rewatch-Count anzeigen (true/false)
-
-## 🎨 Anpassung der Optik
-
-Das Plugin verwendet CSS-Variablen für einfache Anpassungen:
+Override these in your theme's CSS:
 
 ```css
 :root {
-  --ns-primary-color: #2690ff;
-  --ns-primary-light: rgba(38, 144, 255, 0.1);
-  --ns-primary-border: rgba(38, 144, 255, 0.25);
-  --ns-primary-hover: rgba(38, 144, 255, 0.75);
-  --ns-text-color: #1a1a1a;
-  --ns-text-muted: #666;
-  --ns-border-radius: 5px;
-  --ns-transition: 0.3s ease;
+    /* Colors */
+    --ns-primary: #d51007;
+    --ns-primary-hover: #b50d06;
+    --ns-text: #1a1a1a;
+    --ns-text-muted: #666666;
+    --ns-background: #ffffff;
+    --ns-border: #e0e0e0;
+
+    /* Spacing */
+    --ns-gap: 1rem;
+    --ns-radius: 8px;
+
+    /* Typography */
+    --ns-font-size: 0.9375rem;
+    --ns-line-height: 1.5;
+}
+
+/* Dark mode automatically applies */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --ns-text: #e0e0e0;
+        --ns-text-muted: #999999;
+        --ns-background: #1a1a1a;
+        --ns-border: #333333;
+    }
 }
 ```
 
-## 🔧 Debugging
+### Template Overrides
 
-### Debug-Log aktivieren
+Copy templates from `nowscrobbling/templates/` to your theme's `nowscrobbling/` folder:
 
-1. Gehe zu "Einstellungen > NowScrobbling"
-2. Aktiviere "Debug-Log aktivieren"
-3. Überprüfe das Debug-Log in den Plugin-Einstellungen
+```
+your-theme/
+  nowscrobbling/
+    layouts/
+      card.php      # Custom card layout
+    shortcodes/
+      lastfm/
+        indicator.php  # Custom indicator
+```
 
-### Cache leeren
+## Architecture
 
-- Verwende den "Alle Caches leeren" Button in den Plugin-Einstellungen
-- Oder rufe `nowscrobbling_clear_all_caches()` in deinem Theme auf
+NowScrobbling v1.4 is a complete rewrite with modern PHP patterns:
 
-### API-Verbindungen testen
+```
+nowscrobbling/
+├── src/
+│   ├── Core/           # Plugin bootstrap, autoloader, assets
+│   ├── Providers/      # API integrations (Last.fm, Trakt)
+│   ├── Shortcodes/     # All 11 shortcode classes
+│   ├── Cache/          # Multi-layer caching system
+│   ├── Admin/          # Settings page with 7 tabs
+│   ├── Ajax/           # AJAX request handlers
+│   └── Templates/      # Template engine
+├── templates/          # Default templates
+├── assets/
+│   ├── css/           # Styles (variables, layouts, components)
+│   └── js/            # Frontend polling, admin scripts
+└── languages/         # Translations
+```
 
-- Verwende den "API-Verbindungen testen" Button in den Plugin-Einstellungen
-- Überprüfe die Ergebnisse in der Status-Übersicht
+### Key Design Decisions
 
-## 🐛 Bekannte Probleme
+- **Provider Pattern**: Easy to add new services (Spotify, Plex, etc.)
+- **Abstract Shortcodes**: Shared logic, minimal duplication
+- **Template Engine**: Theme overrides with path validation
+- **Fallback Caching**: 7-day backup cache for API failures
 
-- Bei sehr hoher Last können API-Limits erreicht werden
-- Einige Themes können CSS-Konflikte verursachen
-- Bei deaktiviertem JavaScript fallen AJAX-Updates aus
+## Changelog
 
-## 🔄 Changelog
+See [CHANGELOG.md](CHANGELOG.md) for full history.
 
-### Version 1.3.1.1
-- ⚙️ Logging nur aktiv, wenn Debug-Option gesetzt ist
-- 🧹 Kleinere Bereinigungen und Kompatibilitätsverbesserungen (Boolean-Handling in AJAX)
-- 🔢 Version und Defaults angeglichen
+### 1.4.0 (2025-01-15)
+- Complete architectural rewrite
+- PHP 8.0+ with typed properties and enums
+- PSR-4 autoloading
+- New layout system (inline, card, grid, list)
+- Artwork/poster support
+- Multi-layer caching with fallback
+- 7-tab admin dashboard
+- Template override system
+- Removed legacy code
 
-### Version 1.3.0
-- ✨ Server-Side Rendering (SSR) implementiert
-- 🚀 Intelligentes Caching mit Fallback-System
-- 🔒 Verbesserte Sicherheit mit Whitelist und Nonces
-- 🎨 Moderne CSS-Variablen und Animationen
-- 📱 Responsive Design und Dark Mode Support
-- 🗄️ Cronjob-Integration für Hintergrund-Updates
-- 🔧 Erweiterte Admin-Oberfläche mit Status-Übersicht
-- 🐛 Bugfixes und Performance-Optimierungen
+## Contributing
 
-### Version 1.3.0
-- Erste stabile Version
-- Grundlegende Shortcode-Funktionalität
-- AJAX-Updates
-- Einfaches Caching
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-## 🤝 Beitragen
+## License
 
-1. Forke das Repository
-2. Erstelle einen Feature-Branch (`git checkout -b feature/AmazingFeature`)
-3. Committe deine Änderungen (`git commit -m 'Add some AmazingFeature'`)
-4. Push zum Branch (`git push origin feature/AmazingFeature`)
-5. Öffne einen Pull Request
+GPL v2 or later. See [LICENSE](LICENSE) for details.
 
-## 📄 Lizenz
-
-Dieses Projekt ist unter der GPL v2 oder später lizenziert - siehe die [LICENSE](LICENSE) Datei für Details.
-
-## 👨‍💻 Autor
+## Author
 
 **Robin Will** - [robinwill.de](https://robinwill.de/)
 
-## 🙏 Danksagungen
+## Credits
 
-- Last.fm für die API
-- Trakt.tv für die API
-- WordPress Community für die Unterstützung
+- [Last.fm](https://www.last.fm/) for the Scrobbling API
+- [Trakt.tv](https://trakt.tv/) for the watch history API
+- [TMDb](https://www.themoviedb.org/) for movie/TV posters
