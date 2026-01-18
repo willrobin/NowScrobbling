@@ -1,0 +1,366 @@
+/**
+ * NowScrobbling v2.0 - Public Stylesheet
+ *
+ * Features:
+ * - CSS Custom Properties for theming
+ * - WCAG AA compliant colors (4.5:1 contrast)
+ * - Dark mode support (prefers-color-scheme)
+ * - Reduced motion support
+ * - Minimum 44px touch targets
+ *
+ * @package NowScrobbling
+ */
+
+/* ==========================================================================
+   CSS Custom Properties
+   ========================================================================== */
+
+:root {
+    /* Colors - WCAG AA compliant */
+    --ns-primary: #1a73e8;
+    --ns-primary-hover: #1557b0;
+    --ns-text: #202124;
+    --ns-text-muted: #5f6368;
+    --ns-surface: #ffffff;
+    --ns-surface-hover: #f8f9fa;
+    --ns-border: #dadce0;
+    --ns-error: #d93025;
+    --ns-success: #1e8e3e;
+
+    /* Service-specific colors */
+    --ns-lastfm: #d51007;
+    --ns-lastfm-hover: #a30c05;
+    --ns-trakt: #ed1c24;
+    --ns-trakt-hover: #c01920;
+
+    /* Typography */
+    --ns-font-size-sm: 0.8125rem;  /* 13px */
+    --ns-font-size-base: 0.875rem; /* 14px */
+    --ns-font-size-lg: 1rem;       /* 16px */
+    --ns-line-height: 1.5;
+    --ns-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+
+    /* Spacing */
+    --ns-space-xs: 4px;
+    --ns-space-sm: 8px;
+    --ns-space-md: 16px;
+    --ns-space-lg: 24px;
+
+    /* Animation */
+    --ns-transition: 200ms ease-out;
+    --ns-transition-fast: 100ms ease-out;
+    --ns-radius: 6px;
+    --ns-radius-sm: 4px;
+
+    /* Shadows */
+    --ns-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --ns-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --ns-primary: #8ab4f8;
+        --ns-primary-hover: #aecbfa;
+        --ns-text: #e8eaed;
+        --ns-text-muted: #9aa0a6;
+        --ns-surface: #202124;
+        --ns-surface-hover: #2d2e31;
+        --ns-border: #3c4043;
+        --ns-error: #f28b82;
+        --ns-success: #81c995;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
+.nowscrobbling {
+    display: inline;
+    font-family: var(--ns-font-family);
+    font-size: var(--ns-font-size-base);
+    line-height: var(--ns-line-height);
+    color: var(--ns-text);
+}
+
+.nowscrobbling a {
+    color: var(--ns-primary);
+    text-decoration: none;
+    transition: color var(--ns-transition-fast);
+}
+
+.nowscrobbling a:hover,
+.nowscrobbling a:focus {
+    color: var(--ns-primary-hover);
+    text-decoration: underline;
+}
+
+.nowscrobbling a:focus-visible {
+    outline: 2px solid var(--ns-primary);
+    outline-offset: 2px;
+    border-radius: var(--ns-radius-sm);
+}
+
+/* ==========================================================================
+   Bubble Component
+   ========================================================================== */
+
+.nowscrobbling .bubble,
+.nowscrobbling.bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ns-space-xs);
+    padding: var(--ns-space-xs) var(--ns-space-sm);
+    background: var(--ns-surface);
+    border: 1px solid var(--ns-border);
+    border-radius: var(--ns-radius);
+    font-size: var(--ns-font-size-sm);
+    color: var(--ns-text);
+    text-decoration: none;
+    transition: all var(--ns-transition);
+    min-height: 44px; /* Touch target */
+    box-shadow: var(--ns-shadow-sm);
+}
+
+.nowscrobbling .bubble:hover,
+.nowscrobbling.bubble:hover {
+    border-color: var(--ns-primary);
+    background: var(--ns-surface-hover);
+    text-decoration: none;
+}
+
+.nowscrobbling .bubble:focus-visible,
+.nowscrobbling.bubble:focus-visible {
+    outline: 2px solid var(--ns-primary);
+    outline-offset: 2px;
+}
+
+/* Service-specific bubble colors */
+.nowscrobbling .bubble--lastfm:hover {
+    border-color: var(--ns-lastfm);
+    color: var(--ns-lastfm);
+}
+
+.nowscrobbling .bubble--trakt:hover {
+    border-color: var(--ns-trakt);
+    color: var(--ns-trakt);
+}
+
+/* ==========================================================================
+   Now Playing Indicator
+   ========================================================================== */
+
+.nowscrobbling.ns-nowplaying,
+.nowscrobbling .ns-nowplaying {
+    position: relative;
+}
+
+.nowscrobbling.ns-nowplaying::before,
+.nowscrobbling .ns-nowplaying::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: var(--ns-space-xs);
+    background: url('../images/nowplaying.gif') center/contain no-repeat;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+/* Fallback for missing animation */
+@media (prefers-reduced-motion: reduce) {
+    .nowscrobbling.ns-nowplaying::before,
+    .nowscrobbling .ns-nowplaying::before {
+        background: var(--ns-success);
+        border-radius: 50%;
+        animation: none;
+    }
+}
+
+/* ==========================================================================
+   List Styles
+   ========================================================================== */
+
+.nowscrobbling .ns-list {
+    display: inline;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nowscrobbling .ns-list-item {
+    display: inline;
+}
+
+.nowscrobbling .ns-list-item + .ns-list-item::before {
+    content: ', ';
+}
+
+.nowscrobbling .ns-list-item:last-child::before {
+    content: ' ';
+}
+
+/* Vertical list variant */
+.nowscrobbling .ns-list--vertical {
+    display: block;
+}
+
+.nowscrobbling .ns-list--vertical .ns-list-item {
+    display: block;
+    padding: var(--ns-space-xs) 0;
+}
+
+.nowscrobbling .ns-list--vertical .ns-list-item + .ns-list-item::before {
+    content: none;
+}
+
+/* ==========================================================================
+   Loading State
+   ========================================================================== */
+
+.nowscrobbling.nowscrobbling-loading,
+.nowscrobbling .nowscrobbling-loading {
+    position: relative;
+    overflow: hidden;
+    color: transparent !important;
+    min-width: 100px;
+    min-height: 1.5em;
+    background: var(--ns-surface-hover);
+    border-radius: var(--ns-radius-sm);
+}
+
+.nowscrobbling.nowscrobbling-loading::after,
+.nowscrobbling .nowscrobbling-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
+    animation: ns-shimmer 1.5s infinite;
+}
+
+@keyframes ns-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Dark mode shimmer */
+@media (prefers-color-scheme: dark) {
+    .nowscrobbling.nowscrobbling-loading::after,
+    .nowscrobbling .nowscrobbling-loading::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.1),
+            transparent
+        );
+    }
+}
+
+/* ==========================================================================
+   Error State
+   ========================================================================== */
+
+.nowscrobbling .ns-error,
+.nowscrobbling.ns-error {
+    color: var(--ns-error);
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.nowscrobbling .ns-empty,
+.nowscrobbling.ns-empty {
+    color: var(--ns-text-muted);
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Accessibility
+   ========================================================================== */
+
+/* Visually hidden but accessible to screen readers */
+.nowscrobbling .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Skip link (for keyboard users) */
+.nowscrobbling .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--ns-primary);
+    color: #fff;
+    padding: var(--ns-space-sm);
+    z-index: 100;
+    transition: top var(--ns-transition);
+}
+
+.nowscrobbling .skip-link:focus {
+    top: 0;
+}
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+.nowscrobbling .ns-truncate {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nowscrobbling .ns-muted {
+    color: var(--ns-text-muted);
+}
+
+.nowscrobbling .ns-small {
+    font-size: var(--ns-font-size-sm);
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+    .nowscrobbling {
+        color: #000 !important;
+    }
+
+    .nowscrobbling a {
+        color: #000 !important;
+        text-decoration: underline;
+    }
+
+    .nowscrobbling.ns-nowplaying::before,
+    .nowscrobbling .ns-nowplaying::before {
+        display: none;
+    }
+}
