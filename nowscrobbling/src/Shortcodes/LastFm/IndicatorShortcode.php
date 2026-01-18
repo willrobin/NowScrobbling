@@ -70,7 +70,10 @@ final class IndicatorShortcode extends AbstractShortcode
         /* translators: %1$s: artist name, %2$s: track name */
         $title = sprintf(__('%1$s – %2$s on Last.fm', 'nowscrobbling'), $artist, $name);
 
-        return $this->renderer->bubble($text, $url, $this->isNowPlaying($data), $title);
+        // Use style attribute if set, otherwise indicator() uses global setting
+        $style = !empty($atts['style']) ? $atts['style'] : null;
+
+        return $this->renderer->indicator($text, $url, $this->isNowPlaying($data), $title, $style);
     }
 
     protected function getEmptyMessage(): string

@@ -114,6 +114,33 @@
 }
 
 /* ==========================================================================
+   Inline Component (text-like display)
+   ========================================================================== */
+
+.nowscrobbling .ns-inline-link,
+.nowscrobbling.ns-inline-link {
+    /* Inherits link styles from .nowscrobbling a */
+}
+
+.nowscrobbling .ns-inline-nowplaying::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 3px;
+    background: url('../images/nowplaying.gif') center/contain no-repeat;
+    vertical-align: middle;
+}
+
+/* Reduced motion for inline */
+@media (prefers-reduced-motion: reduce) {
+    .nowscrobbling .ns-inline-nowplaying::before {
+        background: var(--ns-success);
+        border-radius: 50%;
+    }
+}
+
+/* ==========================================================================
    Bubble Component
    ========================================================================== */
 
