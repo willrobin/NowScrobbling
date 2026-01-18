@@ -8,7 +8,6 @@ use NowScrobbling\Container;
 use NowScrobbling\Api\LastFmClient;
 use NowScrobbling\Api\TraktClient;
 use NowScrobbling\Cache\CacheManager;
-use NowScrobbling\Shortcodes\ShortcodeManager;
 
 /**
  * AJAX Handler
@@ -160,103 +159,75 @@ final class AjaxHandler
 
     /**
      * Test Last.fm connection
+     *
+     * Uses the LastFmClient for proper cache and rate limiting integration.
      */
     private function testLastFm(): array
     {
-        $apiKey = get_option('ns_lastfm_api_key', '');
-        $user = get_option('ns_lastfm_user', '');
+        /** @var LastFmClient $client */
+        $client = $this->container->make(LastFmClient::class);
 
-        if (empty($apiKey) || empty($user)) {
+        if (!$client->isConfigured()) {
             return [
                 'status' => 'error',
                 'message' => 'API Key or Username not configured',
             ];
         }
 
-        $url = sprintf(
-            'https://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=%s&api_key=%s&format=json',
-            urlencode($user),
-            urlencode($apiKey)
-        );
+        $response = $client->testConnection();
 
-        $response = wp_remote_get($url, ['timeout' => 10]);
-
-        if (is_wp_error($response)) {
+        if ($response->isError()) {
             return [
                 'status' => 'error',
-                'message' => $response->get_error_message(),
+                'message' => $response->error ?? 'Connection failed',
             ];
         }
 
-        $code = wp_remote_retrieve_response_code($response);
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-
-        if ($code !== 200 || isset($body['error'])) {
-            return [
-                'status' => 'error',
-                'message' => $body['message'] ?? 'Unknown error',
-            ];
-        }
+        // Extract user info from recent tracks response
+        $user = get_option('ns_lastfm_user', '');
 
         return [
             'status' => 'success',
-            'message' => sprintf('Connected as %s', $body['user']['name'] ?? $user),
+            'message' => sprintf('Connected as %s', $user),
             'data' => [
-                'name' => $body['user']['name'] ?? '',
-                'playcount' => $body['user']['playcount'] ?? 0,
+                'name' => $user,
             ],
         ];
     }
 
     /**
      * Test Trakt connection
+     *
+     * Uses the TraktClient for proper cache and rate limiting integration.
      */
     private function testTrakt(): array
     {
-        $clientId = get_option('ns_trakt_client_id', '');
-        $user = get_option('ns_trakt_user', '');
+        /** @var TraktClient $client */
+        $client = $this->container->make(TraktClient::class);
 
-        if (empty($clientId) || empty($user)) {
+        if (!$client->isConfigured()) {
             return [
                 'status' => 'error',
                 'message' => 'Client ID or Username not configured',
             ];
         }
 
-        $url = sprintf('https://api.trakt.tv/users/%s', urlencode($user));
+        $response = $client->testConnection();
 
-        $response = wp_remote_get($url, [
-            'timeout' => 10,
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'trakt-api-version' => '2',
-                'trakt-api-key' => $clientId,
-            ],
-        ]);
-
-        if (is_wp_error($response)) {
+        if ($response->isError()) {
             return [
                 'status' => 'error',
-                'message' => $response->get_error_message(),
+                'message' => $response->error ?? 'Connection failed',
             ];
         }
 
-        $code = wp_remote_retrieve_response_code($response);
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-
-        if ($code !== 200) {
-            return [
-                'status' => 'error',
-                'message' => $body['error'] ?? 'Unknown error (HTTP ' . $code . ')',
-            ];
-        }
+        $user = get_option('ns_trakt_user', '');
 
         return [
             'status' => 'success',
-            'message' => sprintf('Connected as %s', $body['username'] ?? $user),
+            'message' => sprintf('Connected as %s', $user),
             'data' => [
-                'username' => $body['username'] ?? '',
-                'name' => $body['name'] ?? '',
+                'username' => $user,
             ],
         ];
     }

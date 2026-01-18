@@ -20,16 +20,10 @@ use NowScrobbling\Cache\CacheManager;
 final class LastFmClient extends AbstractApiClient
 {
     /**
-     * Service identifier
-     */
-    protected readonly string $service;
-
-    /**
      * Constructor
      */
     public function __construct(CacheManager $cache)
     {
-        $this->service = 'lastfm';
         parent::__construct($cache);
     }
 
