@@ -43,7 +43,7 @@ final class CachingTab implements TabInterface
             self::SECTION,
             __('Cache Settings', 'nowscrobbling'),
             fn() => $this->renderSectionDescription(),
-            'nowscrobbling_caching'
+            'nowscrobbling'
         );
 
         // Last.fm Cache Duration
@@ -60,7 +60,7 @@ final class CachingTab implements TabInterface
                 'description' => __('Minutes to cache Last.fm data (1-60).', 'nowscrobbling'),
                 'suffix' => __('minutes', 'nowscrobbling'),
             ]),
-            'nowscrobbling_caching',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -78,7 +78,7 @@ final class CachingTab implements TabInterface
                 'description' => __('Minutes to cache Trakt data (1-60).', 'nowscrobbling'),
                 'suffix' => __('minutes', 'nowscrobbling'),
             ]),
-            'nowscrobbling_caching',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -96,7 +96,7 @@ final class CachingTab implements TabInterface
                 'description' => __('Seconds between AJAX refreshes when something is playing (5-120).', 'nowscrobbling'),
                 'suffix' => __('seconds', 'nowscrobbling'),
             ]),
-            'nowscrobbling_caching',
+            'nowscrobbling',
             self::SECTION
         );
 
@@ -114,7 +114,7 @@ final class CachingTab implements TabInterface
                 'description' => __('Maximum seconds between polls when nothing is playing (60-600).', 'nowscrobbling'),
                 'suffix' => __('seconds', 'nowscrobbling'),
             ]),
-            'nowscrobbling_caching',
+            'nowscrobbling',
             self::SECTION
         );
     }
@@ -125,7 +125,7 @@ final class CachingTab implements TabInterface
         <div class="ns-tab-content" id="ns-tab-caching">
             <table class="form-table" role="presentation">
                 <tbody>
-                    <?php do_settings_fields('nowscrobbling_caching', self::SECTION); ?>
+                    <?php do_settings_fields('nowscrobbling', self::SECTION); ?>
                 </tbody>
             </table>
 
