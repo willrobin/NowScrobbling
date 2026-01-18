@@ -31,23 +31,26 @@ define('NOWSCROBBLING_PATH', plugin_dir_path(__FILE__));
 define('NOWSCROBBLING_URL', plugin_dir_url(__FILE__));
 define('NOWSCROBBLING_BASENAME', plugin_basename(__FILE__));
 
-// Load Composer autoloader
-$autoloader = NOWSCROBBLING_PATH . 'vendor/autoload.php';
+// Load autoloader (Composer or fallback)
+$composerAutoloader = NOWSCROBBLING_PATH . 'vendor/autoload.php';
+$fallbackAutoloader = NOWSCROBBLING_PATH . 'autoload.php';
 
-if (!file_exists($autoloader)) {
+if (file_exists($composerAutoloader)) {
+    require_once $composerAutoloader;
+} elseif (file_exists($fallbackAutoloader)) {
+    require_once $fallbackAutoloader;
+} else {
     add_action('admin_notices', static function (): void {
         printf(
             '<div class="notice notice-error"><p>%s</p></div>',
             esc_html__(
-                'NowScrobbling: Composer autoloader not found. Please run "composer install" in the plugin directory.',
+                'NowScrobbling: Autoloader not found. Please reinstall the plugin.',
                 'nowscrobbling'
             )
         );
     });
     return;
 }
-
-require_once $autoloader;
 
 // Boot plugin after WordPress is fully loaded
 add_action(
