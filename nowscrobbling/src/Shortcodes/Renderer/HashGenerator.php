@@ -49,7 +49,6 @@ final class HashGenerator
     {
         // Remove keys that change but don't affect display
         $volatileKeys = [
-            '@attr',
             'date',
             'uts',
             'timestamp',

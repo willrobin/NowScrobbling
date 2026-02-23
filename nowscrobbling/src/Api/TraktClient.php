@@ -106,6 +106,9 @@ final class TraktClient extends AbstractApiClient
      */
     public function getHistory(string $type = 'all', int $limit = 10): ApiResponse
     {
+        $type = $this->sanitizeHistoryType($type);
+        $limit = max(1, min(50, $limit));
+
         $user = get_option('ns_trakt_user');
         $endpoint = $type === 'all'
             ? "users/{$user}/history"
@@ -151,6 +154,8 @@ final class TraktClient extends AbstractApiClient
      */
     public function getRatings(string $type = 'all'): ApiResponse
     {
+        $type = $this->sanitizeHistoryType($type);
+
         $user = get_option('ns_trakt_user');
         $endpoint = $type === 'all'
             ? "users/{$user}/ratings"
@@ -360,5 +365,16 @@ final class TraktClient extends AbstractApiClient
         }
 
         return $formatted;
+    }
+
+    /**
+     * Sanitize history/rating type parameter.
+     */
+    private function sanitizeHistoryType(string $type): string
+    {
+        $type = strtolower(trim($type));
+        $allowed = ['all', 'movies', 'shows', 'episodes'];
+
+        return in_array($type, $allowed, true) ? $type : 'all';
     }
 }

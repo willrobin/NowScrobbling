@@ -135,7 +135,25 @@ final class CacheManager
 
             $value = $callback();
 
-            // 6. Handle errors - return fallback if available
+            // 6. Handle ETag 304 "not modified" responses.
+            // If we have fallback data, repopulate primary cache from it.
+            if ($this->isNotModifiedResponse($value)) {
+                if ($hasFallback) {
+                    $this->storeAll($key, $fallback, $primaryTtl);
+                    $this->stats['hits']++;
+                    return $fallback;
+                }
+
+                // No fallback available: surface as an error marker.
+                $this->stats['errors']++;
+                return [
+                    '__ns_error' => true,
+                    'message' => 'Received not-modified response without cached fallback data.',
+                    'http_code' => 500,
+                ];
+            }
+
+            // 7. Handle errors - return fallback if available
             if ($this->isError($value)) {
                 $this->stats['errors']++;
                 $this->logDebug("Fetch error, checking fallback: $key", $service);
@@ -149,7 +167,7 @@ final class CacheManager
                 return $value;
             }
 
-            // 7. Store in all cache layers
+            // 8. Store in all cache layers
             $this->storeAll($key, $value, $primaryTtl);
 
             return $value;
@@ -291,6 +309,16 @@ final class CacheManager
         }
 
         return isset($value['error']) || isset($value['__ns_error']);
+    }
+
+    /**
+     * Check if a value is an API "not modified" marker.
+     *
+     * @param mixed $value Value to check
+     */
+    private function isNotModifiedResponse(mixed $value): bool
+    {
+        return is_array($value) && ($value['__ns_not_modified'] ?? false) === true;
     }
 
     /**

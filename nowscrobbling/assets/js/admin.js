@@ -38,7 +38,7 @@
          * @param {Object} config
          */
         constructor(config) {
-            this.#ajaxUrl = config.ajaxUrl;
+            this.#ajaxUrl = config.ajaxUrl || window.ajaxurl || '';
             this.#restUrl = config.restUrl;
             this.#nonces = config.nonces || {};
         }
@@ -64,18 +64,24 @@
 
                     button.disabled = true;
                     button.classList.add('is-loading');
-                    resultSpan.textContent = '';
-                    resultSpan.className = 'ns-test-result';
+                    if (resultSpan) {
+                        resultSpan.textContent = '';
+                        resultSpan.className = 'ns-test-result';
+                    }
 
                     try {
                         const result = await this.#testConnection(service);
 
-                        resultSpan.textContent = result.message;
-                        resultSpan.classList.add(result.status === 'success' ? 'ns-success' : 'ns-error');
+                        if (resultSpan) {
+                            resultSpan.textContent = result.message;
+                            resultSpan.classList.add(result.status === 'success' ? 'ns-success' : 'ns-error');
+                        }
 
                     } catch (error) {
-                        resultSpan.textContent = error.message || 'Connection failed';
-                        resultSpan.classList.add('ns-error');
+                        if (resultSpan) {
+                            resultSpan.textContent = error.message || 'Connection failed';
+                            resultSpan.classList.add('ns-error');
+                        }
                     } finally {
                         button.disabled = false;
                         button.classList.remove('is-loading');
@@ -164,6 +170,10 @@
          * @returns {Promise<Object>}
          */
         async #testConnection(service) {
+            if (!this.#ajaxUrl) {
+                throw new Error('admin-ajax URL is not configured');
+            }
+
             const formData = new FormData();
             formData.append('action', 'nowscrobbling_test_api');
             formData.append('service', service);
@@ -190,6 +200,10 @@
          * @returns {Promise<Object>}
          */
         async #clearCache(type) {
+            if (!this.#ajaxUrl) {
+                throw new Error('admin-ajax URL is not configured');
+            }
+
             const formData = new FormData();
             formData.append('action', 'nowscrobbling_clear_cache');
             formData.append('type', type || 'all');

@@ -38,7 +38,7 @@ final class HistoryShortcode extends AbstractShortcode
     protected function getDefaultAttributes(): array
     {
         return [
-            'max_length' => 45,
+            ...parent::getDefaultAttributes(),
             'limit' => (int) get_option('ns_trakt_activity_limit', 5),
             'type' => 'all',
         ];

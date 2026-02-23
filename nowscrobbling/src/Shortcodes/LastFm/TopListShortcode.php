@@ -48,9 +48,9 @@ final class TopListShortcode extends AbstractShortcode
         };
 
         return [
-            'max_length' => 45,
-            'limit' => (int) get_option($limitOption, 5),
-            'period' => '7day',
+            ...parent::getDefaultAttributes(),
+            'limit' => (int) get_option($limitOption, (int) get_option('ns_default_limit', 5)),
+            'period' => (string) get_option('ns_default_period', '7day'),
         ];
     }
 

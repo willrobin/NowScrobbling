@@ -37,12 +37,21 @@ final class IndicatorShortcode extends AbstractShortcode
 
     protected function getData(array $atts): mixed
     {
-        // First check if currently watching
-        $watching = $this->client->getCurrentlyWatching();
+        // First check if currently watching.
+        $watchingResponse = $this->client->getWatching();
 
-        if ($watching !== null) {
-            return ['watching' => true, 'data' => $watching];
+        // Preserve previous flag state on API errors.
+        if ($watchingResponse->isError()) {
+            return null;
         }
+
+        if (!empty($watchingResponse->data) && isset($watchingResponse->data['type'])) {
+            $this->setWatchingFlag(true);
+            return ['watching' => true, 'data' => $watchingResponse->data];
+        }
+
+        // Confirmed idle state.
+        $this->setWatchingFlag(false);
 
         // Otherwise get last watched
         $response = $this->client->getHistory('all', 1);
@@ -107,5 +116,16 @@ final class IndicatorShortcode extends AbstractShortcode
     protected function isNowPlaying(mixed $data): bool
     {
         return $data['watching'] ?? false;
+    }
+
+    /**
+     * Store current watching state for background cron decisions.
+     */
+    private function setWatchingFlag(bool $active): void
+    {
+        $value = $active ? 1 : 0;
+        if ((int) get_option('ns_flag_trakt_watching', 0) !== $value) {
+            update_option('ns_flag_trakt_watching', $value);
+        }
     }
 }

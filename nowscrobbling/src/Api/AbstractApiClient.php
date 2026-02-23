@@ -174,6 +174,13 @@ abstract class AbstractApiClient implements ApiClientInterface
                 return ['__ns_not_modified' => true];
             }
 
+            // Handle 204 No Content (valid empty response, e.g. Trakt /watching when idle)
+            if ($code === 204) {
+                $this->etagLayer->storeFromResponse($url, $this->headersToArray($headers));
+                $this->rateLimiter->recordSuccess();
+                return [];
+            }
+
             // Handle rate limiting
             if ($code === 429) {
                 $this->rateLimiter->recordError(429);

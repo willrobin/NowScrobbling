@@ -79,6 +79,7 @@ abstract class AbstractShortcode
         }
 
         $atts = shortcode_atts($this->getDefaultAttributes(), $atts, $this->getTag());
+        $atts = $this->sanitizeAttributes($atts);
 
         try {
             $data = $this->getData($atts);
@@ -119,9 +120,48 @@ abstract class AbstractShortcode
     protected function getDefaultAttributes(): array
     {
         return [
-            'max_length' => 45,
+            'max_length' => (int) get_option('ns_max_length', 45),
             'style' => '', // Empty = use global setting
         ];
+    }
+
+    /**
+     * Sanitize shortcode attributes.
+     *
+     * @param array<string, mixed> $atts Raw shortcode attributes
+     *
+     * @return array<string, mixed>
+     */
+    protected function sanitizeAttributes(array $atts): array
+    {
+        if (isset($atts['max_length'])) {
+            $atts['max_length'] = max(20, min(200, (int) $atts['max_length']));
+        }
+
+        if (isset($atts['limit'])) {
+            $atts['limit'] = max(1, min(50, (int) $atts['limit']));
+        }
+
+        if (isset($atts['style'])) {
+            $style = sanitize_key((string) $atts['style']);
+            $atts['style'] = in_array($style, ['inline', 'bubble'], true) ? $style : '';
+        }
+
+        if (isset($atts['period'])) {
+            $period = sanitize_key((string) $atts['period']);
+            $allowed = ['7day', '1month', '3month', '6month', '12month', 'overall'];
+            $atts['period'] = in_array($period, $allowed, true)
+                ? $period
+                : (string) get_option('ns_default_period', '7day');
+        }
+
+        if (isset($atts['type'])) {
+            $type = sanitize_key((string) $atts['type']);
+            $allowed = ['all', 'movies', 'shows', 'episodes'];
+            $atts['type'] = in_array($type, $allowed, true) ? $type : 'all';
+        }
+
+        return $atts;
     }
 
     /**

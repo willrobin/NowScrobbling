@@ -110,7 +110,7 @@ final class Deactivator
         }
 
         // If using object cache, clear the cache group
-        if (wp_using_ext_object_cache()) {
+        if (wp_using_ext_object_cache() && function_exists('wp_cache_flush_group')) {
             wp_cache_flush_group('nowscrobbling');
         }
     }

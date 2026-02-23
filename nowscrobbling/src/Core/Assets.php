@@ -254,6 +254,7 @@ final class Assets
     private function getAdminConfig(): array
     {
         return [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
             'restUrl' => rest_url('nowscrobbling/v1'),
             'nonces'  => [
                 'cacheClear' => wp_create_nonce('ns_cache_clear'),

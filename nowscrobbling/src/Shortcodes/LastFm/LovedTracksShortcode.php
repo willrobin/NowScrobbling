@@ -38,7 +38,7 @@ final class LovedTracksShortcode extends AbstractShortcode
     protected function getDefaultAttributes(): array
     {
         return [
-            'max_length' => 45,
+            ...parent::getDefaultAttributes(),
             'limit' => (int) get_option('ns_lovedtracks_count', 5),
         ];
     }

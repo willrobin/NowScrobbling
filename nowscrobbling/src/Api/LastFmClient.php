@@ -89,6 +89,8 @@ final class LastFmClient extends AbstractApiClient
      */
     public function getRecentTracks(int $limit = 5): ApiResponse
     {
+        $limit = max(1, min(50, $limit));
+
         return $this->fetch('', [
             'method' => 'user.getrecenttracks',
             'user' => get_option('ns_lastfm_user'),
@@ -106,6 +108,9 @@ final class LastFmClient extends AbstractApiClient
      */
     public function getTopArtists(string $period = '7day', int $limit = 5): ApiResponse
     {
+        $period = $this->sanitizePeriod($period);
+        $limit = max(1, min(50, $limit));
+
         return $this->fetch('', [
             'method' => 'user.gettopartists',
             'user' => get_option('ns_lastfm_user'),
@@ -124,6 +129,9 @@ final class LastFmClient extends AbstractApiClient
      */
     public function getTopAlbums(string $period = '7day', int $limit = 5): ApiResponse
     {
+        $period = $this->sanitizePeriod($period);
+        $limit = max(1, min(50, $limit));
+
         return $this->fetch('', [
             'method' => 'user.gettopalbums',
             'user' => get_option('ns_lastfm_user'),
@@ -142,6 +150,9 @@ final class LastFmClient extends AbstractApiClient
      */
     public function getTopTracks(string $period = '7day', int $limit = 5): ApiResponse
     {
+        $period = $this->sanitizePeriod($period);
+        $limit = max(1, min(50, $limit));
+
         return $this->fetch('', [
             'method' => 'user.gettoptracks',
             'user' => get_option('ns_lastfm_user'),
@@ -159,6 +170,8 @@ final class LastFmClient extends AbstractApiClient
      */
     public function getLovedTracks(int $limit = 5): ApiResponse
     {
+        $limit = max(1, min(50, $limit));
+
         return $this->fetch('', [
             'method' => 'user.getlovedtracks',
             'user' => get_option('ns_lastfm_user'),
@@ -272,5 +285,16 @@ final class LastFmClient extends AbstractApiClient
         }
 
         return $formatted;
+    }
+
+    /**
+     * Sanitize Last.fm period parameter.
+     */
+    private function sanitizePeriod(string $period): string
+    {
+        $period = strtolower(trim($period));
+        $allowed = ['7day', '1month', '3month', '6month', '12month', 'overall'];
+
+        return in_array($period, $allowed, true) ? $period : '7day';
     }
 }

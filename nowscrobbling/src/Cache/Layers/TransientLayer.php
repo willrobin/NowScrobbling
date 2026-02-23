@@ -149,7 +149,7 @@ final class TransientLayer implements CacheLayerInterface
         );
 
         // Clear object cache if available
-        if (wp_using_ext_object_cache()) {
+        if (wp_using_ext_object_cache() && function_exists('wp_cache_flush_group')) {
             wp_cache_flush_group('transient');
         }
 

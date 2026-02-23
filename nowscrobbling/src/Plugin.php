@@ -277,6 +277,45 @@ final class Plugin
         add_action('nowscrobbling_register_settings', function (Container $c): void {
             $c->make(AdminController::class)->registerSettings();
         });
+
+        // Conservative background refresh: only keep active now-playing states warm.
+        add_action('nowscrobbling_background_refresh', function (bool $hasLastFm, bool $hasTrakt): void {
+            $lastfmActive = $hasLastFm && (int) get_option('ns_flag_lastfm_nowplaying', 0) === 1;
+            $traktActive = $hasTrakt && (int) get_option('ns_flag_trakt_watching', 0) === 1;
+
+            if ($lastfmActive || $traktActive) {
+                do_action('nowscrobbling_nowplaying_refresh', $lastfmActive, $traktActive);
+            }
+        }, 10, 2);
+
+        // Refresh path while now-playing is active.
+        add_action('nowscrobbling_nowplaying_refresh', function (bool $lastfmActive, bool $traktActive): void {
+            try {
+                if ($lastfmActive) {
+                    $lastFm = $this->container->make(LastFmClient::class);
+                    $response = $lastFm->getRecentTracks(1);
+
+                    if (!$response->isError()) {
+                        update_option(
+                            'ns_flag_lastfm_nowplaying',
+                            $lastFm->isNowPlaying($response->data) ? 1 : 0
+                        );
+                    }
+                }
+
+                if ($traktActive) {
+                    $trakt = $this->container->make(TraktClient::class);
+                    $response = $trakt->getWatching();
+
+                    if (!$response->isError()) {
+                        $isWatching = !empty($response->data) && isset($response->data['type']);
+                        update_option('ns_flag_trakt_watching', $isWatching ? 1 : 0);
+                    }
+                }
+            } catch (\Throwable $e) {
+                do_action('nowscrobbling_shortcode_error', $e, 'cron_nowplaying_refresh');
+            }
+        }, 10, 2);
     }
 
     /**

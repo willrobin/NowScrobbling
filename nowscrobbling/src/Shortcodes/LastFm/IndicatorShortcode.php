@@ -43,7 +43,10 @@ final class IndicatorShortcode extends AbstractShortcode
             return null;
         }
 
-        return $response->data;
+        $data = $response->data;
+        $this->setNowPlayingFlag($this->client->isNowPlaying($data));
+
+        return $data;
     }
 
     protected function formatOutput(mixed $data, array $atts): string
@@ -84,5 +87,16 @@ final class IndicatorShortcode extends AbstractShortcode
     protected function isNowPlaying(mixed $data): bool
     {
         return $this->client->isNowPlaying($data);
+    }
+
+    /**
+     * Store current now-playing state for background cron decisions.
+     */
+    private function setNowPlayingFlag(bool $active): void
+    {
+        $value = $active ? 1 : 0;
+        if ((int) get_option('ns_flag_lastfm_nowplaying', 0) !== $value) {
+            update_option('ns_flag_lastfm_nowplaying', $value);
+        }
     }
 }

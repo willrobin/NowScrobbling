@@ -48,7 +48,7 @@ final class LastMediaShortcode extends AbstractShortcode
         };
 
         return [
-            'max_length' => 45,
+            ...parent::getDefaultAttributes(),
             'limit' => (int) get_option($limitOption, 3),
         ];
     }

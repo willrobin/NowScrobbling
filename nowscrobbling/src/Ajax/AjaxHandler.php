@@ -92,9 +92,20 @@ final class AjaxHandler
 
         try {
             $cacheManager = $this->container->make(CacheManager::class);
-            $cacheManager->clearAll();
+            $type = sanitize_text_field(wp_unslash($_POST['type'] ?? 'all'));
+            $success = $type === 'primary'
+                ? $cacheManager->clearPrimary()
+                : $cacheManager->clearAll();
 
-            wp_send_json_success(['message' => 'Cache cleared successfully']);
+            if (!$success) {
+                wp_send_json_error(['message' => 'Failed to clear cache'], 500);
+            }
+
+            wp_send_json_success([
+                'message' => $type === 'primary'
+                    ? 'Primary cache cleared successfully'
+                    : 'Cache cleared successfully',
+            ]);
         } catch (\Exception $e) {
             wp_send_json_error(['message' => $e->getMessage()], 500);
         }
@@ -138,7 +149,10 @@ final class AjaxHandler
         // Get attributes
         $atts = [];
         if (!empty($_POST['atts'])) {
-            $atts = json_decode(stripslashes($_POST['atts']), true) ?: [];
+            $raw = wp_unslash($_POST['atts']);
+            if (is_string($raw)) {
+                $atts = json_decode($raw, true) ?: [];
+            }
         }
 
         // Build shortcode string

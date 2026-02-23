@@ -143,7 +143,21 @@ final class CredentialsTab implements TabInterface
     {
         ?>
         <div class="ns-tab-content" id="ns-tab-credentials">
-            <?php do_settings_sections('nowscrobbling'); ?>
+            <h3><?php esc_html_e('Last.fm API', 'nowscrobbling'); ?></h3>
+            <?php $this->renderSectionDescription('lastfm'); ?>
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <?php do_settings_fields('nowscrobbling', self::SECTION_LASTFM); ?>
+                </tbody>
+            </table>
+
+            <h3><?php esc_html_e('Trakt.tv API', 'nowscrobbling'); ?></h3>
+            <?php $this->renderSectionDescription('trakt'); ?>
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <?php do_settings_fields('nowscrobbling', self::SECTION_TRAKT); ?>
+                </tbody>
+            </table>
         </div>
         <?php
     }

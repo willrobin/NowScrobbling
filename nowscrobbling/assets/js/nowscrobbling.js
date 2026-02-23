@@ -130,21 +130,78 @@
         #initElement(el) {
             const shortcode = el.dataset.nowscrobblingShortcode;
             const isNowPlaying = el.dataset.nsNowplaying === '1';
+            const isPollable = this.#isPollableShortcode(shortcode);
+            const attrs = this.#parseAttrs(el);
 
             this.#elements.set(el, {
                 shortcode,
                 isNowPlaying,
-                interval: this.#polling.baseInterval,
+                isPollable,
+                attrs,
+                interval: isNowPlaying ? this.#polling.baseInterval : this.#polling.maxInterval,
                 fails: 0,
                 timerId: null
             });
 
-            // Start polling if it's a now-playing indicator
-            if (isNowPlaying) {
+            // Start polling for indicator shortcodes.
+            if (isPollable) {
                 this.#startPolling(el);
             }
 
             this.#log(`Initialized element: ${shortcode}`);
+        }
+
+        /**
+         * Parse shortcode attributes from data attribute.
+         * @param {HTMLElement} el
+         * @returns {Object<string, string>}
+         */
+        #parseAttrs(el) {
+            const raw = el.dataset.nsAttrs;
+            const allowed = new Set(['max_length', 'limit', 'period', 'type', 'style']);
+
+            if (!raw) {
+                return {};
+            }
+
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') {
+                    return {};
+                }
+
+                const filtered = {};
+                Object.entries(parsed).forEach(([key, value]) => {
+                    if (!allowed.has(key)) {
+                        return;
+                    }
+
+                    if (
+                        typeof value === 'string' ||
+                        typeof value === 'number' ||
+                        typeof value === 'boolean'
+                    ) {
+                        filtered[key] = String(value);
+                    }
+                });
+
+                return filtered;
+            } catch {
+                return {};
+            }
+        }
+
+        /**
+         * Determine if a shortcode should be polled.
+         * @param {string|undefined} shortcode
+         * @returns {boolean}
+         */
+        #isPollableShortcode(shortcode) {
+            if (!shortcode) {
+                return false;
+            }
+
+            return shortcode.endsWith('_indicator');
         }
 
         /**
@@ -170,15 +227,18 @@
                 }
 
                 try {
-                    const result = await this.#fetch(data.shortcode, el.dataset.nsHash);
+                    const result = await this.#fetch(data.shortcode, el.dataset.nsHash, data.attrs);
 
                     if (!result.unchanged) {
                         this.#updateElement(el, result);
                     }
 
-                    // Reset on success
+                    // Reset on success and adapt polling rate to now-playing state.
                     data.fails = 0;
-                    data.interval = this.#polling.baseInterval;
+                    data.isNowPlaying = el.dataset.nsNowplaying === '1';
+                    data.interval = data.isNowPlaying
+                        ? this.#polling.baseInterval
+                        : this.#polling.maxInterval;
 
                 } catch (error) {
                     this.#log(`Poll error: ${error.message}`);
@@ -190,8 +250,8 @@
                     );
                 }
 
-                // Continue polling for now-playing elements
-                if (data.isNowPlaying || el.dataset.nsNowplaying === '1') {
+                // Continue polling for pollable elements.
+                if (data.isPollable) {
                     data.timerId = setTimeout(poll, data.interval);
                 }
             };
@@ -204,9 +264,10 @@
          * Fetch shortcode content from REST API
          * @param {string} shortcode
          * @param {string|null} hash
+         * @param {Object<string, string>} attrs
          * @returns {Promise<Object>}
          */
-        async #fetch(shortcode, hash = null) {
+        async #fetch(shortcode, hash = null, attrs = {}) {
             const url = new URL(
                 `${this.#apiBase}/render/${shortcode}`,
                 window.location.origin
@@ -214,6 +275,10 @@
 
             if (hash) {
                 url.searchParams.set('hash', hash);
+            }
+
+            if (attrs && Object.keys(attrs).length > 0) {
+                url.searchParams.set('attrs', JSON.stringify(attrs));
             }
 
             const response = await fetch(url.toString(), {
@@ -255,6 +320,15 @@
             el.innerHTML = newContent;
             el.dataset.nsHash = data.hash;
 
+            // Keep attributes in sync so refresh calls preserve shortcode options.
+            if (data.attrs && typeof data.attrs === 'object') {
+                el.dataset.nsAttrs = JSON.stringify(data.attrs);
+                const current = this.#elements.get(el);
+                if (current) {
+                    current.attrs = data.attrs;
+                }
+            }
+
             // Update now-playing state
             const isNowPlaying = data.html.includes('data-ns-nowplaying="1"');
             if (isNowPlaying) {
@@ -263,6 +337,11 @@
             } else {
                 delete el.dataset.nsNowplaying;
                 el.classList.remove('ns-nowplaying');
+            }
+
+            const elementData = this.#elements.get(el);
+            if (elementData) {
+                elementData.isNowPlaying = isNowPlaying;
             }
 
             // Smooth height transition
@@ -390,7 +469,7 @@
             this.#elements.forEach((data, el) => {
                 if (document.body.contains(el)) {
                     promises.push(
-                        this.#fetch(data.shortcode, el.dataset.nsHash)
+                        this.#fetch(data.shortcode, el.dataset.nsHash, data.attrs)
                             .then(result => {
                                 if (!result.unchanged) {
                                     this.#updateElement(el, result);
@@ -412,7 +491,7 @@
             for (const [el, data] of this.#elements) {
                 if (data.shortcode === shortcode && document.body.contains(el)) {
                     try {
-                        const result = await this.#fetch(shortcode, el.dataset.nsHash);
+                        const result = await this.#fetch(shortcode, el.dataset.nsHash, data.attrs);
                         if (!result.unchanged) {
                             this.#updateElement(el, result);
                         }

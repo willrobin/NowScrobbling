@@ -50,6 +50,19 @@ final class RestController
         'nowscr_trakt_last_episode',
     ];
 
+    /**
+     * Allowed shortcode attribute keys for REST rendering.
+     *
+     * @var array<string>
+     */
+    private const ALLOWED_ATTRS = [
+        'max_length',
+        'limit',
+        'period',
+        'type',
+        'style',
+    ];
+
     public function __construct(Container $container)
     {
         $this->container = $container;
@@ -73,6 +86,10 @@ final class RestController
                     'sanitize_callback' => 'sanitize_key',
                 ],
                 'hash' => [
+                    'required' => false,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'attrs' => [
                     'required' => false,
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
@@ -114,9 +131,10 @@ final class RestController
     {
         $shortcode = $request->get_param('shortcode');
         $clientHash = $request->get_param('hash');
+        $attrs = $this->parseAttrs($request->get_param('attrs'));
 
-        // Render the shortcode
-        $html = do_shortcode("[{$shortcode}]");
+        // Render the shortcode with optional original attributes from the page.
+        $html = do_shortcode($this->buildShortcode($shortcode, $attrs));
 
         // Extract hash from output
         preg_match('/data-ns-hash="([^"]+)"/', $html, $matches);
@@ -127,12 +145,14 @@ final class RestController
             return new WP_REST_Response([
                 'unchanged' => true,
                 'hash' => $hash,
+                'attrs' => $attrs,
             ], 200);
         }
 
         return new WP_REST_Response([
             'html' => $html,
             'hash' => $hash,
+            'attrs' => $attrs,
             'timestamp' => time(),
         ], 200);
     }
@@ -225,5 +245,76 @@ final class RestController
     private function validateShortcode(string $shortcode): bool
     {
         return in_array($shortcode, self::ALLOWED_SHORTCODES, true);
+    }
+
+    /**
+     * Parse and sanitize shortcode attributes from request.
+     *
+     * Accepts either a JSON string or an array.
+     *
+     * @param mixed $rawAttrs Raw attrs input
+     *
+     * @return array<string, string>
+     */
+    private function parseAttrs(mixed $rawAttrs): array
+    {
+        if ($rawAttrs === null || $rawAttrs === '') {
+            return [];
+        }
+
+        $decoded = is_string($rawAttrs)
+            ? json_decode($rawAttrs, true)
+            : $rawAttrs;
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $attrs = [];
+
+        foreach ($decoded as $key => $value) {
+            if (!is_string($key) || !is_scalar($value)) {
+                continue;
+            }
+
+            $sanitizedKey = sanitize_key($key);
+            if ($sanitizedKey === '') {
+                continue;
+            }
+
+            if (!in_array($sanitizedKey, self::ALLOWED_ATTRS, true)) {
+                continue;
+            }
+
+            // Keep attributes reasonably bounded.
+            $attrs[$sanitizedKey] = substr(sanitize_text_field((string) $value), 0, 200);
+
+            // Hard cap to avoid abuse.
+            if (count($attrs) >= 20) {
+                break;
+            }
+        }
+
+        return $attrs;
+    }
+
+    /**
+     * Build a shortcode string from tag and attributes.
+     *
+     * @param string               $shortcode Shortcode tag
+     * @param array<string, mixed> $attrs     Sanitized attrs
+     */
+    private function buildShortcode(string $shortcode, array $attrs): string
+    {
+        if (empty($attrs)) {
+            return "[{$shortcode}]";
+        }
+
+        $parts = [];
+        foreach ($attrs as $key => $value) {
+            $parts[] = sprintf('%s="%s"', sanitize_key((string) $key), esc_attr((string) $value));
+        }
+
+        return sprintf('[%s %s]', $shortcode, implode(' ', $parts));
     }
 }
