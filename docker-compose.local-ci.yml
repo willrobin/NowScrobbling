@@ -1,0 +1,8 @@
+services:
+  php-ci:
+    build:
+      context: ./nowscrobbling
+      dockerfile: Dockerfile.ci
+    working_dir: /workspace/nowscrobbling
+    volumes:
+      - ./:/workspace

@@ -11,9 +11,10 @@
 declare(strict_types=1);
 
 // Storage for mock data
-global $wp_mock_options, $wp_mock_transients;
+global $wp_mock_options, $wp_mock_transients, $wp_mock_http_handler;
 $wp_mock_options = [];
 $wp_mock_transients = [];
+$wp_mock_http_handler = null;
 
 // =============================================================================
 // Options API
@@ -265,6 +266,12 @@ if (!function_exists('wp_verify_nonce')) {
 if (!function_exists('wp_remote_get')) {
     function wp_remote_get(string $url, array $args = []): array
     {
+        global $wp_mock_http_handler;
+
+        if (is_callable($wp_mock_http_handler)) {
+            return $wp_mock_http_handler($url, $args);
+        }
+
         return [
             'response' => ['code' => 200, 'message' => 'OK'],
             'body' => '{}',
@@ -291,6 +298,20 @@ if (!function_exists('wp_remote_retrieve_header')) {
     function wp_remote_retrieve_header(array $response, string $header): string
     {
         return $response['headers'][$header] ?? '';
+    }
+}
+
+if (!function_exists('wp_remote_retrieve_headers')) {
+    function wp_remote_retrieve_headers(array $response): array
+    {
+        return $response['headers'] ?? [];
+    }
+}
+
+if (!function_exists('wp_safe_remote_get')) {
+    function wp_safe_remote_get(string $url, array $args = []): array|WP_Error
+    {
+        return wp_remote_get($url, $args);
     }
 }
 
@@ -389,12 +410,33 @@ if (!function_exists('rest_url')) {
     }
 }
 
+if (!function_exists('shortcode_atts')) {
+    function shortcode_atts(array $pairs, array $atts, string $shortcode = ''): array
+    {
+        return array_merge($pairs, $atts);
+    }
+}
+
+if (!function_exists('wp_json_encode')) {
+    function wp_json_encode(mixed $value): string|false
+    {
+        return json_encode($value);
+    }
+}
+
+function wp_mock_http_set_handler(?callable $handler): void
+{
+    global $wp_mock_http_handler;
+    $wp_mock_http_handler = $handler;
+}
+
 /**
  * Reset all mock data between tests
  */
 function wp_mock_reset(): void
 {
-    global $wp_mock_options, $wp_mock_transients;
+    global $wp_mock_options, $wp_mock_transients, $wp_mock_http_handler;
     $wp_mock_options = [];
     $wp_mock_transients = [];
+    $wp_mock_http_handler = null;
 }

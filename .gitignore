@@ -34,6 +34,7 @@ error_log
 vendor/
 node_modules/
 composer.lock
+!nowscrobbling/composer.lock
 package-lock.json
 
 # Build artifacts (if ever added)

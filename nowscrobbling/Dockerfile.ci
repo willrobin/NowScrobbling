@@ -1,0 +1,12 @@
+FROM php:8.2-cli-alpine
+
+RUN apk add --no-cache \
+    git \
+    unzip \
+    libxml2-dev \
+    oniguruma-dev \
+    && docker-php-ext-install mbstring xml
+
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+WORKDIR /app
