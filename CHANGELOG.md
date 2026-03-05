@@ -5,6 +5,7 @@
 ### Changed
 - **docs**: README auf den tatsaechlichen v2.0-Projektstand gestrafft und vereinheitlicht
 - **docs**: ROADMAP.md neu angelegt (P0/P1/P2 Prioritaeten und naechster Sprint)
+- **docs**: ROADMAP.md zu einem operativen Steuerdokument erweitert (Statusueberblick, 2-Wochen-Sprint, DoD, Brainstorming-Backlog)
 - **docs**: Doku-Einstieg auf klare Referenzen zu Architektur, Contributing und Changelog ausgerichtet
 - **ops**: lokale CI-Strecke fuer OrbStack/Docker via `Makefile`, `docker-compose.local-ci.yml` und `nowscrobbling/Dockerfile.ci` hinzugefuegt
 - **ops**: inkrementelles PHPCS fuer geaenderte Produktionsdateien (`make ci-phpcs-changed`, Bestandteil von `make ci-check`) eingefuehrt

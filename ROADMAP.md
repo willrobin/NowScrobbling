@@ -4,36 +4,113 @@ Stand: 5. Maerz 2026
 
 ## Zielbild
 
-NowScrobbling soll ein wartbares, performantes WordPress-Plugin bleiben, das Last.fm- und Trakt-Daten stabil ausliefert, auch bei API-Fehlern und Cache-/Hosting-Sonderfaellen.
+NowScrobbling soll ein robustes, wartbares WordPress-Plugin bleiben, das Last.fm- und Trakt-Daten stabil ausliefert, auch bei API-Ausfaellen, Caching-Sonderfaellen und unterschiedlichen Hosting-Umgebungen.
+
+## Statusueberblick
+
+- Architektur v2.0 (PHP 8.2+, DI, REST, Multi-Layer-Cache): `done`
+- Lokale private CI via OrbStack (`make ci-test`, `make ci-check`): `done`
+- Inkrementelles Linting fuer geaenderte Produktionsdateien: `done`
+- Kritische Testluecken (API-Clients, RestController-Routen, Shortcode-Randfaelle): `in progress`
+- Reproduzierbarer Release- und Deploy-Prozess: `planned`
+- Multisite-Strategie: `planned`
+
+## Leitplanken
+
+- Privacy first: keine externen Pflichtdienste fuer Build/Test/Deploy.
+- Stabilitaet vor Features fuer die naechsten v2.0.x-Releases.
+- Dokumentation wird bei jeder Aenderung mitgezogen (README/ROADMAP/CHANGELOG).
 
 ## Prioritaeten
 
-### P0 - Direkt als naechstes (1-2 Wochen)
+### P0 - Stabilisieren und release-faehig machen (naechste 1-2 Wochen)
 
-1. Release-Readiness fuer v2.0.x herstellen: Dokumentation konsistent halten, Release-Checkliste definieren, Plugin in sauberer Test-WP-Instanz gegenpruefen (Aktivierung, Settings, alle 11 Shortcodes).
-2. Testabdeckung fuer kritische Flows erhoehen: Unit-Tests fuer `Api/*Client`-Fehlerszenarien, `RestController`-Sanitization/Allowlist, `Shortcodes/*` bei leeren/ungueltigen API-Antworten.
-3. Caching- und Diagnosefluss absichern: Cache-Metriken unter Last pruefen (Hit-Rate, Fallback-Nutzung) und Debug-Logging auf sinnvolle Defaults/Groessenlimit absichern.
+1. Testabdeckung fuer risikohohe Bereiche erhoehen.
+- Fokus: `Api/*Client`, `RestController` Route-Verhalten, Shortcode-Fehlerpfade.
+- Ziel: Ausfaelle reproduzierbar abfangen statt nur manuell pruefen.
 
-### P1 - Kurzfristig danach (2-6 Wochen)
+2. Release-Readiness fuer v2.0.1 absichern.
+- Version-Bump, Changelog, Smoke-Test in sauberer WP-Testinstanz.
+- Klare Go/No-Go-Checks vor Tag/Deploy.
 
-1. CI einrichten (GitHub Actions): `composer test`, `composer phpcs`, optional Matrix fuer mehrere PHP-Versionen >= 8.2.
-2. Multisite-Kompatibilitaet konzipieren und umsetzen: Option-Storage je Site vs. Network und Cache-Invalidierung in Multisite pruefen.
-3. Admin UX schrittweise verbessern: klarere Hinweise bei fehlenden API-Credentials, bessere Fehlermeldungen bei 429/5xx, vereinfachter Quick-Check im Diagnostics-Tab.
+3. Caching/Diagnostics absichern.
+- Verhalten bei 204/304/429/5xx explizit pruefen.
+- Debug-Logging auf sinnvolle Begrenzung und Verstaendlichkeit trimmen.
 
-### P2 - Mittelfristig (6+ Wochen)
+### P1 - Lieferfaehigkeit und Wartbarkeit verbessern (2-6 Wochen)
 
-1. Erweiterbarkeit verbessern: klares Extension-Muster fuer weitere Dienste (z. B. Spotify) und dokumentierte Hook-/Filterpunkte.
-2. Paketierung/Distribution professionalisieren: reproduzierbarer Release-Build ohne Dev-Abhaengigkeiten und validierter Deploy-Prozess.
-3. Observability ausbauen: strukturierte Debug-Ausgaben und einfache Export-/Reset-Funktionen fuer Diagnosedaten.
+1. Optionaler Cloud-CI-Spiegel (GitHub Actions) fuer PR-Feedback.
+- Lokal bleibt Source of Truth; Cloud-CI nur als schneller Spiegel.
+
+2. Deploy-Prozess vereinheitlichen.
+- Ein dokumentierter Deploy-Entry-Point (Script/Make-Target) statt manueller Einzelschritte.
+
+3. Admin UX haerten.
+- Deutlichere Hinweise bei fehlenden Credentials.
+- Praezise Fehlertexte fuer API-Limits und Upstream-Ausfaelle.
+
+### P2 - Produktausbau (6+ Wochen)
+
+1. Multisite-Konzept und Umsetzung.
+2. Erweiterbarkeit fuer weitere Dienste (z. B. Spotify) mit stabilem Extension-Muster.
+3. Observability-Ausbau (strukturierte Diagnose, Export/Reset).
+
+## Konkreter 2-Wochen-Sprint (Vorschlag)
+
+### Sprintziel
+
+v2.0.1 als stabiles Maintenance-Release vorbereiten und auslieferbar machen.
+
+### Backlog (priorisiert)
+
+1. `P0` RestController-Tests erweitern.
+- Attrs-Sanitization edge cases, Invalid shortcode route, response shape.
+- DoD: neue Tests laufen in `make ci-check` gruen.
+
+2. `P0` API-Client-Fehlerpfade testen.
+- 204/304/429/5xx + invalid JSON in Last.fm/Trakt.
+- DoD: erwartetes Fallback-/Error-Verhalten in Tests fest verankert.
+
+3. `P0` Release-Checkliste als Doku anlegen.
+- Datei: `docs/RELEASE.md` oder `RELEASE.md`.
+- DoD: eindeutige Schritte fuer Version, Test, Tag, Push, Deploy, Rollback.
+
+4. `P0` Deploy-Entry-Point definieren.
+- Ein Befehl fuer den wiederholbaren Deploy.
+- DoD: dokumentiert, lokal pruefbar, ohne manuelle Glue-Arbeit.
+
+5. `P1` Diagnostics-UX Quick-Wins.
+- Klarere Statusmeldungen bei nicht konfigurierten APIs.
+- DoD: nachvollziehbare Nutzerhinweise im Admin-Tab.
+
+## Brainstorming-Backlog (Ideen)
+
+### Produkt/UX
+
+- Preset-Shortcodes im Admin mit Copy-Button (schneller Einstieg).
+- Optionales Widget/Block fuer Gutenberg statt nur Shortcode.
+- "Health Badge" im Admin (API ok / degraded / down) mit Handlungshinweis.
+
+### Reliability
+
+- Vertragstests fuer API-Response-Mapping (Last.fm/Trakt).
+- Guardrails fuer zu grosse Option- oder Log-Payloads.
+- Standardisierte Error-Codes intern (`NS_API_RATE_LIMIT`, `NS_API_BAD_JSON`, ...).
+
+### Developer Experience
+
+- `make ci-release` als Sammelziel fuer Test + Lint + Release-Pruefung.
+- Kleinere Test-fixtures fuer typische API-Szenarien.
+- CONTRIBUTING um "Definition of Done" je Change-Type erweitern.
 
 ## Nicht-Ziele (aktuell)
 
-- Re-Design der kompletten Frontend-Ausgabe
-- Einfuehrung eines JS-Frameworks
-- API-Proxy als externer Dienst
+- Komplettes Frontend-Re-Design.
+- Einfuehrung eines JS-Frameworks.
+- Externer API-Proxy-Service.
 
-## Konkreter naechster Sprint (Vorschlag)
+## Erfolgsmessung
 
-1. Testluecken in REST- und Shortcode-Layern schliessen.
-2. Lokale CI (OrbStack/Docker) fuer Test + PHPCS aufsetzen.
-3. v2.0.1 als Stabilitaetsrelease schneiden.
+- `make ci-check` bleibt auf allen Aenderungen gruen.
+- v2.0.1 ohne Regressionen bei den 11 Shortcodes.
+- Dokumentierte und wiederholbare Release-/Deploy-Schritte.
