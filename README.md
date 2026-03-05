@@ -116,6 +116,7 @@ Technische Basis:
 
 - Release-Check: `make release-check`
 - Deploy-Entry-Point: `NS_DEPLOY_CMD='your-command' make deploy`
+- Optional persistent: `.deploy.env.example` nach `.deploy.env` kopieren und `NS_DEPLOY_CMD` dort pflegen
 - Vollstaendige Checkliste: [RELEASE.md](RELEASE.md)
 
 ## Dokumentation

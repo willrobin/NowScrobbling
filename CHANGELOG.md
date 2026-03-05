@@ -11,6 +11,7 @@
 - **ops**: inkrementelles PHPCS fuer geaenderte Produktionsdateien (`make ci-phpcs-changed`, Bestandteil von `make ci-check`) eingefuehrt
 - **ops**: Release-/Deploy-Entry-Point standardisiert (`make release-check`, `make deploy`, `scripts/deploy.sh`, `RELEASE.md`)
 - **tests**: RestController-Verhalten und API-Client-Fehlerpfade (204/304/429/invalid JSON) explizit durch Unit-Tests abgesichert
+- **ops**: `.deploy.env` (lokal/privat) als persistente Deploy-Konfiguration ermoeglicht (`.deploy.env.example`)
 
 ## [2.0.0] - 2026-01-18
 

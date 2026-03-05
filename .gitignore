@@ -22,6 +22,7 @@ Desktop.ini
 # Local development
 .env
 .env.local
+.deploy.env
 *.local.php
 wp-config-local.php
 

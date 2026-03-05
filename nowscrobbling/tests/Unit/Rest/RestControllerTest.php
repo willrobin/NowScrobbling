@@ -104,6 +104,27 @@ final class RestControllerTest extends TestCase
         self::assertStringContainsString('data-nowscrobbling-shortcode="nowscr_lastfm_history"', $data['html']);
     }
 
+    public function testRenderShortcodeReturnsUnchangedWhenHashMatches(): void
+    {
+        $controller = new RestController(Container::getInstance());
+        $firstRequest = new \WP_REST_Request('GET', '/nowscrobbling/v1/render/nowscr_lastfm_history');
+        $firstRequest->set_param('shortcode', 'nowscr_lastfm_history');
+
+        $firstResponse = $controller->renderShortcode($firstRequest);
+        $firstData = $firstResponse->get_data();
+
+        $secondRequest = new \WP_REST_Request('GET', '/nowscrobbling/v1/render/nowscr_lastfm_history');
+        $secondRequest->set_param('shortcode', 'nowscr_lastfm_history');
+        $secondRequest->set_param('hash', $firstData['hash']);
+
+        $secondResponse = $controller->renderShortcode($secondRequest);
+        $secondData = $secondResponse->get_data();
+
+        self::assertSame(200, $secondResponse->get_status());
+        self::assertTrue($secondData['unchanged']);
+        self::assertSame($firstData['hash'], $secondData['hash']);
+    }
+
     public function testGetStatusReturnsCacheDiagnosticsForAdmin(): void
     {
         $container = Container::getInstance();
@@ -156,6 +177,18 @@ final class RestControllerTest extends TestCase
         self::assertTrue($data['success']);
     }
 
+    public function testClearCacheReturns500WhenCacheManagerIsMissing(): void
+    {
+        $controller = new RestController(Container::getInstance());
+        $request = new \WP_REST_Request('POST', '/nowscrobbling/v1/cache/clear');
+
+        $response = $controller->clearCache($request);
+        $data = $response->get_data();
+
+        self::assertSame(500, $response->get_status());
+        self::assertFalse($data['success']);
+    }
+
     public function testTestConnectionReturns400ForUnavailableService(): void
     {
         $controller = new RestController(Container::getInstance());
@@ -196,6 +229,18 @@ final class RestControllerTest extends TestCase
 
         self::assertSame(200, $response->get_status());
         self::assertTrue($data['success']);
+    }
+
+    public function testParseAttrsTruncatesLongValuesToTwoHundredCharacters(): void
+    {
+        $controller = new RestController(Container::getInstance());
+        $long = str_repeat('x', 300);
+
+        $actual = $this->invokePrivate($controller, 'parseAttrs', [[
+            'max_length' => $long,
+        ]]);
+
+        self::assertSame(200, strlen($actual['max_length']));
     }
 
     private function invokePrivate(object $target, string $method, array $args): mixed

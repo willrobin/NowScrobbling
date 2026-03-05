@@ -46,9 +46,17 @@ Deploy wird ueber einen expliziten Entry-Point ausgefuehrt:
 NS_DEPLOY_CMD='your-real-deploy-command' make deploy
 ```
 
+Alternativ kann der Befehl einmalig in einer privaten lokalen Datei hinterlegt werden:
+
+```bash
+cp .deploy.env.example .deploy.env
+# .deploy.env anpassen
+make deploy
+```
+
 Hinweise:
 - `make deploy` fuehrt zuerst `make release-check` aus.
-- Ohne `NS_DEPLOY_CMD` bricht der Deploy bewusst ab.
+- Ohne `NS_DEPLOY_CMD` (direkt oder aus `.deploy.env`) bricht der Deploy bewusst ab.
 - Der reale Deploy-Befehl bleibt bewusst projektspezifisch und privat.
 
 ## Rollback

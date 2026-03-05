@@ -82,6 +82,7 @@ v2.0.1 als stabiles Maintenance-Release vorbereiten und auslieferbar machen.
 5. `P1` Diagnostics-UX Quick-Wins.
 - Klarere Statusmeldungen bei nicht konfigurierten APIs.
 - DoD: nachvollziehbare Nutzerhinweise im Admin-Tab.
+- Hinweis: Umsetzung braucht entweder Legacy-Style-Refactor in betroffenen `src`-Dateien oder eine Lint-Ausnahme auf Linienebene.
 
 ## Brainstorming-Backlog (Ideen)
 
