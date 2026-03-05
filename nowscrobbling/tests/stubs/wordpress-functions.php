@@ -11,10 +11,11 @@
 declare(strict_types=1);
 
 // Storage for mock data
-global $wp_mock_options, $wp_mock_transients, $wp_mock_http_handler;
+global $wp_mock_options, $wp_mock_transients, $wp_mock_http_handler, $wp_mock_rest_routes;
 $wp_mock_options = [];
 $wp_mock_transients = [];
 $wp_mock_http_handler = null;
+$wp_mock_rest_routes = [];
 
 // =============================================================================
 // Options API
@@ -410,6 +411,49 @@ if (!function_exists('rest_url')) {
     }
 }
 
+if (!function_exists('register_rest_route')) {
+    function register_rest_route(string $namespace, string $route, array $args = [], bool $override = false): bool
+    {
+        global $wp_mock_rest_routes;
+        $wp_mock_rest_routes[] = [
+            'namespace' => $namespace,
+            'route' => $route,
+            'args' => $args,
+            'override' => $override,
+        ];
+
+        return true;
+    }
+}
+
+if (!function_exists('__return_true')) {
+    function __return_true(): bool
+    {
+        return true;
+    }
+}
+
+if (!function_exists('do_shortcode')) {
+    function do_shortcode(string $content): string
+    {
+        if (preg_match('/^\[(?<tag>[a-z0-9_]+)(?:\s+(?<attrs>[^\]]+))?\]$/i', $content, $matches) !== 1) {
+            return $content;
+        }
+
+        $tag = $matches['tag'];
+        $slug = str_replace('_', '-', $tag);
+        $hash = md5($content);
+
+        return sprintf(
+            '<span class="nowscrobbling ns-%1$s" data-nowscrobbling-shortcode="%2$s" data-ns-hash="%3$s" data-ns-attrs="{}">%4$s</span>',
+            esc_attr($slug),
+            esc_attr($tag),
+            esc_attr($hash),
+            esc_html($content)
+        );
+    }
+}
+
 if (!function_exists('shortcode_atts')) {
     function shortcode_atts(array $pairs, array $atts, string $shortcode = ''): array
     {
@@ -424,6 +468,51 @@ if (!function_exists('wp_json_encode')) {
     }
 }
 
+if (!class_exists('WP_REST_Request')) {
+    class WP_REST_Request
+    {
+        /**
+         * @var array<string, mixed>
+         */
+        private array $params = [];
+
+        public function __construct(string $method = 'GET', string $route = '/')
+        {
+        }
+
+        public function set_param(string $key, mixed $value): void
+        {
+            $this->params[$key] = $value;
+        }
+
+        public function get_param(string $key): mixed
+        {
+            return $this->params[$key] ?? null;
+        }
+    }
+}
+
+if (!class_exists('WP_REST_Response')) {
+    class WP_REST_Response
+    {
+        public function __construct(
+            public mixed $data = null,
+            public int $status = 200
+        ) {
+        }
+
+        public function get_data(): mixed
+        {
+            return $this->data;
+        }
+
+        public function get_status(): int
+        {
+            return $this->status;
+        }
+    }
+}
+
 function wp_mock_http_set_handler(?callable $handler): void
 {
     global $wp_mock_http_handler;
@@ -435,8 +524,9 @@ function wp_mock_http_set_handler(?callable $handler): void
  */
 function wp_mock_reset(): void
 {
-    global $wp_mock_options, $wp_mock_transients, $wp_mock_http_handler;
+    global $wp_mock_options, $wp_mock_transients, $wp_mock_http_handler, $wp_mock_rest_routes;
     $wp_mock_options = [];
     $wp_mock_transients = [];
     $wp_mock_http_handler = null;
+    $wp_mock_rest_routes = [];
 }

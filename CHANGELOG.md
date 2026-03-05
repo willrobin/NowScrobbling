@@ -9,6 +9,8 @@
 - **docs**: Doku-Einstieg auf klare Referenzen zu Architektur, Contributing und Changelog ausgerichtet
 - **ops**: lokale CI-Strecke fuer OrbStack/Docker via `Makefile`, `docker-compose.local-ci.yml` und `nowscrobbling/Dockerfile.ci` hinzugefuegt
 - **ops**: inkrementelles PHPCS fuer geaenderte Produktionsdateien (`make ci-phpcs-changed`, Bestandteil von `make ci-check`) eingefuehrt
+- **ops**: Release-/Deploy-Entry-Point standardisiert (`make release-check`, `make deploy`, `scripts/deploy.sh`, `RELEASE.md`)
+- **tests**: RestController-Verhalten und API-Client-Fehlerpfade (204/304/429/invalid JSON) explizit durch Unit-Tests abgesichert
 
 ## [2.0.0] - 2026-01-18
 

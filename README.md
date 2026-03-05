@@ -112,6 +112,12 @@ Technische Basis:
 - `nowscrobbling/Dockerfile.ci`
 - `Makefile` Targets `ci-*`
 
+## Release Und Deploy
+
+- Release-Check: `make release-check`
+- Deploy-Entry-Point: `NS_DEPLOY_CMD='your-command' make deploy`
+- Vollstaendige Checkliste: [RELEASE.md](RELEASE.md)
+
 ## Dokumentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)

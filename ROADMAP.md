@@ -12,7 +12,7 @@ NowScrobbling soll ein robustes, wartbares WordPress-Plugin bleiben, das Last.fm
 - Lokale private CI via OrbStack (`make ci-test`, `make ci-check`): `done`
 - Inkrementelles Linting fuer geaenderte Produktionsdateien: `done`
 - Kritische Testluecken (API-Clients, RestController-Routen, Shortcode-Randfaelle): `in progress`
-- Reproduzierbarer Release- und Deploy-Prozess: `planned`
+- Reproduzierbarer Release- und Deploy-Prozess: `in progress`
 - Multisite-Strategie: `planned`
 
 ## Leitplanken
