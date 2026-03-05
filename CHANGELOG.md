@@ -7,6 +7,7 @@
 - **docs**: ROADMAP.md neu angelegt (P0/P1/P2 Prioritaeten und naechster Sprint)
 - **docs**: ROADMAP.md zu einem operativen Steuerdokument erweitert (Statusueberblick, 2-Wochen-Sprint, DoD, Brainstorming-Backlog)
 - **docs**: Doku-Einstieg auf klare Referenzen zu Architektur, Contributing und Changelog ausgerichtet
+- **docs**: Session-Handoff fuer den Tagesabschluss dokumentiert (`docs/SESSION-2026-03-05.md`)
 - **ops**: lokale CI-Strecke fuer OrbStack/Docker via `Makefile`, `docker-compose.local-ci.yml` und `nowscrobbling/Dockerfile.ci` hinzugefuegt
 - **ops**: inkrementelles PHPCS fuer geaenderte Produktionsdateien (`make ci-phpcs-changed`, Bestandteil von `make ci-check`) eingefuehrt
 - **ops**: Release-/Deploy-Entry-Point standardisiert (`make release-check`, `make deploy`, `scripts/deploy.sh`, `RELEASE.md`)

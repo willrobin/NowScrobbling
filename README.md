@@ -125,6 +125,7 @@ Technische Basis:
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [CHANGELOG.md](CHANGELOG.md)
 - [ROADMAP.md](ROADMAP.md)
+- [docs/SESSION-2026-03-05.md](docs/SESSION-2026-03-05.md)
 
 ## Lizenz
 
